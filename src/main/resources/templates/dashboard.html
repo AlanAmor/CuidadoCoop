@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel de gestión | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">PANEL OPERATIVO</p>
+            <h1>Resumen de la cooperativa</h1>
+            <p class="muted" th:text="${#temporals.format(fechaActual, 'EEEE d ''de'' MMMM')}">Fecha actual</p>
+        </div>
+        <a class="button button-primary" th:href="@{/asignaciones/nueva}">＋ Asignar turno</a>
+    </section>
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <section class="metrics" aria-label="Métricas del mes">
+        <article class="metric-card">
+            <span class="metric-label">En servicio</span>
+            <strong class="metric-value" th:text="${sociosEnServicio}">0</strong>
+            <span class="metric-note">Socios asignados</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Disponibles</span>
+            <strong class="metric-value" th:text="${sociosDisponibles}">0</strong>
+            <span class="metric-note">Para coberturas y reemplazos</span>
+        </article>
+        <article class="metric-card metric-card-accent">
+            <span class="metric-label">Horas cargadas este mes</span>
+            <strong class="metric-value" th:text="${#numbers.formatDecimal(horasMes, 1, 2)}">0,00</strong>
+            <span class="metric-note">Asistencias del mes seleccionado</span>
+        </article>
+    </section>
+
+    <section class="calendar-section content-card">
+        <div class="calendar-heading">
+            <div>
+                <p class="eyebrow">AGENDA DE SERVICIOS</p>
+                <h2>Calendario de cobertura</h2>
+                <p class="muted">Consultá turnos, domicilios y socios asignados. Hacé clic en un turno para ver el detalle o eliminarlo.</p>
+            </div>
+            <div class="calendar-controls">
+                <div class="calendar-navigation" aria-label="Navegar el calendario">
+                    <button class="button button-quiet button-icon" id="calendar-prev" type="button"
+                            aria-label="Período anterior">‹</button>
+                    <button class="button button-quiet" id="calendar-today" type="button">Hoy</button>
+                    <button class="button button-quiet button-icon" id="calendar-next" type="button"
+                            aria-label="Período siguiente">›</button>
+                </div>
+                <label class="visually-hidden" for="calendar-date">Ir a una fecha</label>
+                <input id="calendar-date" type="date" th:value="${fechaActual}" aria-label="Ir a una fecha">
+                <label class="visually-hidden" for="calendar-view">Vista del calendario</label>
+                <select id="calendar-view" aria-label="Vista del calendario">
+                    <option value="week" selected>Semana</option>
+                    <option value="day">Día</option>
+                    <option value="month">Mes</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="calendar-period-row">
+            <h3 id="calendar-period" aria-live="polite">Cargando calendario…</h3>
+            <span class="calendar-legend"><i></i> Turno asignado</span>
+        </div>
+        <div class="calendar-error" id="calendar-error" role="alert" hidden></div>
+        <div class="alert alert-success" id="calendar-notice" role="status" hidden></div>
+        <div class="calendar-scroll" id="calendar-grid" aria-live="polite"></div>
+        <section class="calendar-detail" id="calendar-detail" aria-label="Detalle del turno" hidden></section>
+
+        <div class="availability-panels">
+            <section class="availability-card">
+                <div class="availability-heading">
+                    <div>
+                        <h3>Socios disponibles</h3>
+                        <p>Estado actual para coberturas y reemplazos</p>
+                    </div>
+                    <strong id="available-count">0</strong>
+                </div>
+                <ul class="availability-list" id="available-partners">
+                    <li class="availability-empty">Cargando disponibilidad…</li>
+                </ul>
+            </section>
+            <section class="availability-card">
+                <div class="availability-heading">
+                    <div>
+                        <h3>Clientes sin turno en el período</h3>
+                        <p>Servicios que no tienen asistencia asignada en este rango</p>
+                    </div>
+                    <strong id="unassigned-service-count">0</strong>
+                </div>
+                <ul class="availability-list" id="unassigned-services">
+                    <li class="availability-empty">Cargando servicios…</li>
+                </ul>
+            </section>
+        </div>
+    </section>
+
+    <section class="content-card welcome-card">
+        <div>
+            <p class="eyebrow">GESTIÓN DIARIA</p>
+            <h2>La información operativa, en un solo lugar</h2>
+            <p class="muted">Registrá una cobertura o consultá el retorno mensual de un socio.</p>
+        </div>
+        <div class="quick-links">
+            <a class="button button-secondary" th:href="@{/asignaciones/nueva}">Registrar asistencia</a>
+            <a class="button button-quiet" th:href="@{/liquidaciones}">Consultar retornos</a>
+            <a class="button button-quiet" th:href="@{/estadisticas}">Ver estadísticas</a>
+        </div>
+    </section>
+</main>
+<script th:src="@{/js/calendario.js}" defer></script>
+</body>
+</html>

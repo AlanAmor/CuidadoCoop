@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="header" class="site-header">
+    <a class="brand" th:href="@{/}">Cuidado<span>Coop</span></a>
+    <nav aria-label="Navegación principal">
+        <a th:href="@{/}">Inicio</a>
+        <a th:href="@{/asignaciones/nueva}">Asignar turno</a>
+        <a th:href="@{/socios}">Socios</a>
+        <a th:href="@{/clientes}">Clientes</a>
+        <a th:href="@{/servicios}">Servicios</a>
+        <a th:href="@{/liquidaciones}">Liquidaciones</a>
+        <a th:href="@{/presupuestos}">Presupuestos</a>
+        <a th:href="@{/asistencias/historico}">Histórico</a>
+        <a th:href="@{/estadisticas}">Estadísticas</a>
+    </nav>
+    <script th:src="@{/js/confirmar.js}" defer></script>
+    <script th:src="@{/js/legajo.js}" defer></script>
+</header>
+
+<section th:fragment="panelLegajo" class="content-card form-card legajo-panel">
+    <h2 class="legajo-titulo">Legajo</h2>
+    <div th:if="${legajoId == null}" class="muted">
+        Guardá primero los datos para poder adjuntar archivos al legajo.
+    </div>
+    <div th:if="${legajoId != null}" data-legajo-panel th:attr="data-tipo=${legajoTipo},data-id=${legajoId}">
+        <p class="muted">Facturas, presupuestos y otros documentos (PDF, JPG o PNG, hasta 10 MB cada uno). Los archivos se guardan al soltarlos, sin necesidad de presionar "Guardar".</p>
+        <div class="legajo-zona" data-zona tabindex="0" role="button"
+             aria-label="Soltar archivos acá o hacer clic para elegirlos">
+            <strong>Arrastrá los archivos acá</strong>
+            <span>o hacé clic para elegirlos</span>
+            <input type="file" data-entrada multiple accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" hidden>
+        </div>
+        <div data-estado class="legajo-estado" role="status" hidden></div>
+        <ul class="legajo-filas" data-archivos></ul>
+    </div>
+</section>
+</body>
+</html>

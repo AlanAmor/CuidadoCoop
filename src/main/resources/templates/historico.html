@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Histórico de asistencias | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">AUDITORÍA</p>
+            <h1>Histórico de asistencias</h1>
+            <p class="muted">Exportá el detalle de turnos con horas y valor hora histórico aplicado.</p>
+        </div>
+    </section>
+    <form class="content-card form-card" method="get">
+        <div class="form-grid">
+            <div class="field">
+                <label for="desde">Desde</label>
+                <input id="desde" name="desde" type="date" th:value="${desde}" required>
+            </div>
+            <div class="field">
+                <label for="hasta">Hasta</label>
+                <input id="hasta" name="hasta" type="date" th:value="${hasta}" required>
+            </div>
+        </div>
+        <p class="form-hint">El DNI se incluye como identificador del socio. Compartí estos archivos únicamente con personas autorizadas.</p>
+        <div class="form-actions">
+            <button class="button button-secondary" type="submit" formaction="/asistencias/historico/pdf">
+                Descargar PDF
+            </button>
+            <button class="button button-primary" type="submit" formaction="/asistencias/historico/excel">
+                Descargar Excel
+            </button>
+        </div>
+    </form>
+</main>
+</body>
+</html>

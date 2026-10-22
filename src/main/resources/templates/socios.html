@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Socios | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">GESTIÓN</p>
+            <h1>Socios</h1>
+            <p class="muted">Alta, edición y baja de cuidadores y enfermeros.</p>
+        </div>
+        <a class="button button-primary" th:href="@{/socios/nuevo}">Nuevo socio</a>
+    </section>
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <div class="content-card table-card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Socio</th><th>DNI</th><th>Contacto</th><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="socio : ${socios}">
+                    <td th:text="|${socio.apellido}, ${socio.nombre}|"></td>
+                    <td th:text="${socio.dni}"></td>
+                    <td th:text="|${socio.telefono} · ${socio.correo}|"></td>
+                    <td th:text="${socio.especialidad.etiqueta}"></td>
+                    <td><span class="badge" th:text="${socio.estado.etiqueta}"></span></td>
+                    <td class="row-actions">
+                        <a class="button button-secondary" th:href="@{/socios/{id}/editar(id=${socio.id})}">Editar</a>
+                        <form method="post" th:action="@{/socios/{id}/eliminar(id=${socio.id})}"
+                              data-confirm="¿Eliminar este socio? También se borrarán todos sus turnos registrados.">
+                            <button class="button button-danger" type="submit">Eliminar</button>
+                        </form>
+                        <button class="button button-secondary" type="button" data-legajo-tipo="socios"
+                                th:attr="data-legajo-id=${socio.id},data-legajo-titulo=|${socio.apellido}, ${socio.nombre}|">Legajo</button>
+                        <a class="button button-secondary" th:href="@{/socios/{id}/historico/pdf(id=${socio.id})}"
+                           title="Histórico completo de asistencias en PDF">Histórico PDF</a>
+                        <a class="button button-secondary" th:href="@{/socios/{id}/historico/excel(id=${socio.id})}"
+                           title="Histórico completo de asistencias en Excel">Excel</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(socios)}">
+                    <td colspan="6" class="empty-state">Todavía no hay socios. Creá el primero con "Nuevo socio".</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>

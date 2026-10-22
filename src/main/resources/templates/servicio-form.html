@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Servicio | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">SERVICIOS</p>
+            <h1 th:text="${titulo}">Servicio</h1>
+        </div>
+    </section>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <form class="content-card form-card" method="post" th:action="${accion}" th:object="${servicio}">
+        <div class="field">
+            <label for="tipoServicioId">Tipo de servicio</label>
+            <select id="tipoServicioId" th:field="*{tipoServicioId}">
+                <option value="">Seleccioná un tipo</option>
+                <option th:each="t : ${tipos}" th:value="${t.id}" th:text="${t.nombre}"></option>
+            </select>
+            <small class="field-error" th:errors="*{tipoServicioId}"></small>
+            <small class="muted">¿Falta uno? <a th:href="@{/tipos-servicio}">Administrá los tipos de servicio</a>.</small>
+        </div>
+        <div class="field field-spaced">
+            <label for="valorHora">Precio por hora que se cobra al cliente ($)</label>
+            <input id="valorHora" type="number" min="0.01" step="0.01" th:field="*{valorHora}">
+            <small class="field-error" th:errors="*{valorHora}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="valorHoraSocio">Pago por hora al socio ($)</label>
+            <input id="valorHoraSocio" type="number" min="0.01" step="0.01" th:field="*{valorHoraSocio}">
+            <small class="field-error" th:errors="*{valorHoraSocio}"></small>
+        </div>
+        <p class="form-hint">Son valores independientes. Cambiarlos no modifica los turnos ya cargados: conservan los valores con los que se registraron.</p>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Guardar</button>
+            <a class="button button-secondary" th:href="@{/servicios}">Cancelar</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>

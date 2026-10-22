@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estadísticas | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<!-- Fragmentos reutilizados más abajo; no se muestran donde están definidos. -->
+<div th:remove="all">
+    <span th:fragment="delta(c, texto)" class="metric-note">
+        <span th:if="${c.variacion == null}" th:text="|${texto}: sin datos para comparar|">sin datos</span>
+        <span th:if="${c.variacion != null}"
+              th:classappend="${c.variacion.signum() >= 0} ? 'delta-up' : 'delta-down'"
+              th:text="|${c.variacion.signum() > 0 ? '▲' : (c.variacion.signum() < 0 ? '▼' : '=')} ${#numbers.formatDecimal(c.variacion.abs(), 1, 1)}% ${texto} (${#numbers.formatDecimal(c.anterior, 1, 2)} h)|">0</span>
+    </span>
+
+    <div th:fragment="ranking(barras, vacio, pie)" class="demand-list">
+        <article class="demand-item" th:each="b : ${barras}">
+            <div class="demand-heading">
+                <strong th:text="${b.etiqueta}">Nombre</strong>
+                <span th:text="|${b.turnos} turnos · ${#numbers.formatDecimal(b.horas, 1, 2)} h|">0</span>
+            </div>
+            <div class="bar-track" role="img"
+                 th:aria-label="|${b.etiqueta}: ${#numbers.formatDecimal(b.participacion, 1, 2)} por ciento|">
+                <div class="bar-fill" th:style="|width: ${b.ancho}%|"></div>
+            </div>
+            <span class="bar-caption" th:text="|${#numbers.formatDecimal(b.participacion, 1, 2)}% ${pie}|">0%</span>
+        </article>
+        <p class="empty-state" th:if="${#lists.isEmpty(barras)}" th:text="${vacio}">Sin datos.</p>
+    </div>
+</div>
+
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">ANALÍTICA</p>
+            <h1>Estadísticas de la cooperativa</h1>
+            <p class="muted">Horas trabajadas, comparativas entre socios, demanda de servicios y resultado económico.</p>
+        </div>
+        <form class="year-filter stats-filter" method="get" th:action="@{/estadisticas}">
+            <label for="anio">Año</label>
+            <input id="anio" name="anio" type="number" min="1900" max="9998"
+                   th:value="${panel.anio}" required>
+            <label for="mes">Mes</label>
+            <select id="mes" name="mes">
+                <option th:each="p, it : ${panel.horasMensuales}" th:value="${it.count}"
+                        th:text="${p.titulo}" th:selected="${it.count == panel.mes}">Enero</option>
+            </select>
+            <label for="semana">Semana</label>
+            <select id="semana" name="semana">
+                <option th:each="n : ${#numbers.sequence(1, panel.totalSemanas)}" th:value="${n}"
+                        th:text="${n}" th:selected="${n == panel.semana}">1</option>
+            </select>
+            <button class="button button-primary" type="submit">Consultar</button>
+        </form>
+    </section>
+
+    <section class="metrics stats-metrics">
+        <article class="metric-card metric-card-accent">
+            <span class="metric-label" th:text="|Horas del año ${panel.anio}|">Horas del año</span>
+            <strong class="metric-value" th:text="${#numbers.formatDecimal(panel.resumen.anio.actual, 1, 2)}">0,00</strong>
+            <span th:replace="~{:: delta(${panel.resumen.anio}, 'vs. año anterior')}"></span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label" th:text="|Horas de ${panel.nombreMes}|">Horas del mes</span>
+            <strong class="metric-value" th:text="${#numbers.formatDecimal(panel.resumen.mes.actual, 1, 2)}">0,00</strong>
+            <span th:replace="~{:: delta(${panel.resumen.mes}, 'vs. mes anterior')}"></span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label" th:text="|Horas de la semana ${panel.semana} (${panel.rangoSemana})|">Horas de la semana</span>
+            <strong class="metric-value" th:text="${#numbers.formatDecimal(panel.resumen.semana.actual, 1, 2)}">0,00</strong>
+            <span th:replace="~{:: delta(${panel.resumen.semana}, 'vs. semana anterior')}"></span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Turnos del año</span>
+            <strong class="metric-value" th:text="${panel.resumen.turnosAnio}">0</strong>
+            <span class="metric-note" th:text="|${#numbers.formatDecimal(panel.resumen.promedioHorasPorTurno, 1, 2)} h promedio por turno|">0</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Socios con horas</span>
+            <strong class="metric-value" th:text="|${panel.resumen.sociosConHoras} de ${panel.resumen.sociosActivos}|">0</strong>
+            <span class="metric-note" th:text="|${#numbers.formatDecimal(panel.resumen.promedioHorasPorSocio, 1, 2)} h promedio por socio|">0</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Clientes atendidos</span>
+            <strong class="metric-value" th:text="${panel.resumen.clientesAtendidos}">0</strong>
+            <span class="metric-note" th:text="|Mes más activo: ${panel.resumen.mejorMes} (${#numbers.formatDecimal(panel.resumen.horasMejorMes, 1, 2)} h)|">-</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Facturado en el año (sin IVA)</span>
+            <strong class="metric-value metric-money" th:text="|$ ${#numbers.formatDecimal(panel.resumen.facturado, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong>
+            <span class="metric-note">Horas × valor hora al cliente</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Retornos a socios</span>
+            <strong class="metric-value metric-money" th:text="|$ ${#numbers.formatDecimal(panel.resumen.pagadoSocios, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong>
+            <span class="metric-note">Horas × valor hora del socio</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Excedente de la cooperativa</span>
+            <strong class="metric-value metric-money" th:text="|$ ${#numbers.formatDecimal(panel.resumen.margen, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong>
+            <span class="metric-note">Facturado menos retornos</span>
+        </article>
+    </section>
+
+    <section class="content-card table-card chart-card">
+        <div class="chart-heading">
+            <h2 th:text="|Horas por mes · ${panel.anio} vs. ${panel.anio - 1}|">Horas por mes</h2>
+            <span class="chart-legend"><i class="legend-current"></i> Año seleccionado <i class="legend-previous"></i> Año anterior</span>
+        </div>
+        <div class="chart-columns" role="list">
+            <div class="chart-col" role="listitem" th:each="p : ${panel.horasMensuales}"
+                 th:classappend="${p.destacado} ? 'chart-col-active'"
+                 th:title="|${p.titulo}: ${#numbers.formatDecimal(p.horas, 1, 2)} h (año anterior ${#numbers.formatDecimal(p.horasAnterior, 1, 2)} h)|">
+                <span class="chart-value" th:text="${#numbers.formatDecimal(p.horas, 1, 1)}">0</span>
+                <div class="chart-bars">
+                    <span class="chart-bar chart-bar-prev" th:style="|height: ${p.alturaAnterior}%|"></span>
+                    <span class="chart-bar" th:style="|height: ${p.altura}%|"></span>
+                </div>
+                <span class="chart-label" th:text="${p.etiqueta}">Ene</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="content-card table-card chart-card">
+        <div class="chart-heading">
+            <h2 th:text="|Horas por semana · ${panel.anio}|">Horas por semana</h2>
+            <span class="muted">Semanas de lunes a domingo. Resaltada: semana seleccionada.</span>
+        </div>
+        <div class="chart-columns chart-compact" role="list">
+            <div class="chart-col" role="listitem" th:each="p : ${panel.horasSemanales}"
+                 th:classappend="${p.destacado} ? 'chart-col-active'"
+                 th:title="|${p.titulo}: ${#numbers.formatDecimal(p.horas, 1, 2)} h|">
+                <div class="chart-bars">
+                    <span class="chart-bar" th:style="|height: ${p.altura}%|"></span>
+                </div>
+                <span class="chart-label" th:text="${p.etiqueta}">1</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="statistics-grid stats-block">
+        <section class="content-card table-card">
+            <h2 th:text="|Top socios de ${panel.nombreMes}|">Top socios del mes</h2>
+            <div th:replace="~{:: ranking(${panel.topSociosMes}, 'Ningún socio registra horas en este mes.', 'de las horas del mes (top 10)')}"></div>
+        </section>
+        <section class="content-card table-card">
+            <h2 th:text="|Top socios de la semana ${panel.semana} (${panel.rangoSemana})|">Top socios de la semana</h2>
+            <div th:replace="~{:: ranking(${panel.topSociosSemana}, 'Ningún socio registra horas en esta semana.', 'de las horas de la semana (top 10)')}"></div>
+        </section>
+    </div>
+
+    <section class="content-card table-card stats-block">
+        <h2>Horas por socio</h2>
+        <p class="muted">Comparativa entre socios del año <strong th:text="${panel.anio}">2025</strong>. El mapa de calor muestra las horas de cada mes (más oscuro, más horas).</p>
+        <div class="table-wrap">
+            <table class="stats-table">
+                <thead>
+                <tr>
+                    <th>Socio</th>
+                    <th th:text="|Sem. ${panel.semana}|">Semana</th>
+                    <th th:text="${panel.nombreMes}">Mes</th>
+                    <th>Año</th>
+                    <th>% del total</th>
+                    <th>Turnos</th>
+                    <th>H/turno</th>
+                    <th class="heat-head" th:each="p : ${panel.horasMensuales}" th:text="${p.etiqueta}">Ene</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="fila : ${panel.socios}">
+                    <td th:text="${fila.nombre}">Socio</td>
+                    <td th:text="${#numbers.formatDecimal(fila.horasSemana, 1, 2)}">0,00</td>
+                    <td th:text="${#numbers.formatDecimal(fila.horasMes, 1, 2)}">0,00</td>
+                    <td><strong th:text="${#numbers.formatDecimal(fila.horasAnio, 1, 2)}">0,00</strong></td>
+                    <td th:text="|${#numbers.formatDecimal(fila.participacionAnio, 1, 1)}%|">0%</td>
+                    <td th:text="${fila.turnosAnio}">0</td>
+                    <td th:text="${#numbers.formatDecimal(fila.promedioPorTurno, 1, 2)}">0,00</td>
+                    <td class="heat" th:each="c : ${fila.meses}" th:classappend="|heat-${c.nivel}|"
+                        th:title="|${#numbers.formatDecimal(c.horas, 1, 2)} h|"
+                        th:text="${c.nivel == 0} ? '·' : ${#numbers.formatDecimal(c.horas, 1, 0)}">·</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(panel.socios)}">
+                    <td colspan="19" class="empty-state">No hay socios ni asistencias registradas.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="statistics-grid stats-block">
+        <section class="content-card table-card">
+            <h2>Servicios más demandados</h2>
+            <div th:replace="~{:: ranking(${panel.servicios}, 'No hay servicios demandados para este año.', 'de las asistencias')}"></div>
+        </section>
+        <section class="content-card table-card">
+            <h2>Clientes con más horas</h2>
+            <div th:replace="~{:: ranking(${panel.topClientes}, 'No hay clientes atendidos en este año.', 'de las horas del año (top 10)')}"></div>
+        </section>
+        <section class="content-card table-card">
+            <h2>Horas según el día de la semana</h2>
+            <div th:replace="~{:: ranking(${panel.diasSemana}, '', 'de las horas del año')}"></div>
+        </section>
+        <section class="content-card table-card">
+            <h2>Horas según la franja horaria</h2>
+            <p class="muted">Se clasifica por la hora de inicio del turno.</p>
+            <div th:replace="~{:: ranking(${panel.franjasHorarias}, '', 'de las horas del año')}"></div>
+        </section>
+    </div>
+
+    <section class="content-card table-card stats-block">
+        <h2 th:text="|Resultado económico por mes · ${panel.anio}|">Resultado económico</h2>
+        <div class="table-wrap">
+            <table class="stats-table">
+                <thead>
+                <tr><th>Mes</th><th>Horas</th><th>Facturado</th><th>Retornos a socios</th><th>Excedente</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="f : ${panel.finanzasMensuales}">
+                    <td th:text="${f.mes}">Enero</td>
+                    <td th:text="${#numbers.formatDecimal(f.horas, 1, 2)}">0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(f.facturado, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(f.pagadoSocios, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(f.margen, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">Valores sin IVA y sin el descuento por pago en efectivo; se calculan con el precio vigente al cargar cada turno.</p>
+    </section>
+
+    <section class="content-card table-card stats-block">
+        <h2 th:text="|Socios sin turnos en ${panel.nombreMes}|">Socios sin turnos</h2>
+        <p class="empty-state" th:if="${#lists.isEmpty(panel.sociosSinHorasMes)}">Todos los socios activos tuvieron al menos un turno en este mes.</p>
+        <ul class="chip-list" th:unless="${#lists.isEmpty(panel.sociosSinHorasMes)}">
+            <li th:each="nombre : ${panel.sociosSinHorasMes}" th:text="${nombre}">Socio</li>
+        </ul>
+    </section>
+</main>
+</body>
+</html>

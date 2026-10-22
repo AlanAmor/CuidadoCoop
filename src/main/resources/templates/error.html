@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="|${codigoEstado} · ${tituloError}|">Error | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="content-card error-card" role="alert">
+        <p class="eyebrow" th:text="|ERROR ${codigoEstado}|">ERROR</p>
+        <h1 th:text="${tituloError}">Ocurrió un problema</h1>
+        <p class="muted" th:text="${mensajeError}">Revisá los datos e intentá nuevamente.</p>
+        <div class="quick-links error-actions">
+            <a class="button button-primary" th:href="@{/}">Volver al inicio</a>
+            <button class="button button-quiet" type="button" onclick="history.back()">Volver a la pantalla anterior</button>
+        </div>
+    </section>
+</main>
+</body>
+</html>

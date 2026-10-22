@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Asignar turno | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">OPERACIONES</p>
+            <h1>Asignar un turno</h1>
+            <p class="muted">Primero indicá el día y el horario del servicio; después elegí entre los socios que están libres en ese momento.</p>
+        </div>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <form class="content-card form-card" method="get" th:action="@{/asignaciones/nueva}">
+        <h2 class="step-title">1. Día y horario del servicio</h2>
+        <div class="form-grid">
+            <div class="field">
+                <label for="fecha">Fecha del turno</label>
+                <input id="fecha" name="fecha" type="date" th:value="${asignacion.fecha}" required>
+            </div>
+            <div class="field">
+                <label for="horaInicio">Hora de inicio</label>
+                <input id="horaInicio" name="horaInicio" type="time" th:value="${asignacion.horaInicio}" required>
+            </div>
+            <div class="field">
+                <label for="horaFin">Hora de fin</label>
+                <input id="horaFin" name="horaFin" type="time" th:value="${asignacion.horaFin}" required>
+            </div>
+        </div>
+        <p class="form-hint">Los turnos nocturnos que terminan al día siguiente se calculan automáticamente. Un socio figura como disponible si no tiene otro turno que se superponga con ese día y horario.</p>
+
+        <fieldset class="repeat-box">
+            <legend>Cuidado fijo (larga duración)</legend>
+            <label class="check-inline">
+                <input type="checkbox" name="repetir" value="true" th:checked="${asignacion.repetir}">
+                Repetir este horario durante un período
+            </label>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="cantidad">Duración</label>
+                    <input id="cantidad" name="cantidad" type="number" min="1" max="366" th:value="${asignacion.cantidad}">
+                </div>
+                <div class="field">
+                    <label for="unidad">Unidad</label>
+                    <select id="unidad" name="unidad">
+                        <option th:each="u : ${unidades}" th:value="${u}" th:text="${u.etiqueta}"
+                                th:selected="${u == asignacion.unidad}"></option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <span class="label-text">Días de la semana</span>
+                <div class="days-row">
+                    <label class="check-inline" th:each="d : ${diasSemana}">
+                        <input type="checkbox" name="dias" th:value="${d.key}"
+                               th:checked="${asignacion.dias.contains(d.key)}">
+                        <span th:text="${d.value}"></span>
+                    </label>
+                </div>
+            </div>
+            <p class="form-hint">Empieza en la fecha elegida arriba. Máximo un año por asignación. Si el socio ya tiene un turno en alguna de las fechas, no aparecerá como disponible.</p>
+        </fieldset>
+        <div class="form-actions">
+            <a class="button button-quiet" th:href="@{/}">Cancelar</a>
+            <button class="button button-primary" type="submit">Ver socios disponibles</button>
+        </div>
+    </form>
+
+    <form class="content-card form-card step-card" method="post" th:action="@{/asignaciones}" th:object="${asignacion}"
+          th:if="${sociosDisponibles != null}">
+        <h2 class="step-title">2. Socio y servicio</h2>
+        <p class="muted">
+            Turno:
+            <strong th:text="${#temporals.format(asignacion.fecha, 'dd/MM/yyyy')}"></strong>
+            de <strong th:text="${asignacion.horaInicio}"></strong>
+            a <strong th:text="${asignacion.horaFin}"></strong>
+        </p>
+        <p class="muted" th:if="${asignacion.repetir and fechasSerie != null}">
+            Cuidado fijo: <strong th:text="${#lists.size(fechasSerie)}"></strong> turnos, del
+            <strong th:text="${#temporals.format(fechasSerie[0], 'dd/MM/yyyy')}"></strong> al
+            <strong th:text="${#temporals.format(fechasSerie[#lists.size(fechasSerie) - 1], 'dd/MM/yyyy')}"></strong>.
+            Se crean todos juntos o ninguno.
+        </p>
+        <input type="hidden" name="fecha" th:value="${asignacion.fecha}">
+        <input type="hidden" name="horaInicio" th:value="${asignacion.horaInicio}">
+        <input type="hidden" name="horaFin" th:value="${asignacion.horaFin}">
+        <input type="hidden" name="repetir" th:value="${asignacion.repetir}">
+        <input type="hidden" name="unidad" th:value="${asignacion.unidad}">
+        <input type="hidden" name="cantidad" th:value="${asignacion.cantidad}">
+        <input type="hidden" name="dias" th:each="d : ${asignacion.dias}" th:value="${d}">
+
+        <div class="field">
+            <label for="socioId">Socio disponible en ese horario</label>
+            <select id="socioId" th:field="*{socioId}" required>
+                <option value="">Seleccioná un socio</option>
+                <option th:each="socio : ${sociosDisponibles}"
+                        th:value="${socio.id}"
+                        th:text="|${socio.apellido}, ${socio.nombre} · ${socio.especialidad.etiqueta} · DNI ${socio.dni}|"></option>
+            </select>
+            <small class="field-error" th:if="${#fields.hasErrors('socioId')}" th:errors="*{socioId}"></small>
+            <small class="muted" th:if="${#lists.isEmpty(sociosDisponibles)}">
+                Todos los socios tienen un turno en ese horario. Probá con otro día u horario.
+            </small>
+        </div>
+
+        <div class="field">
+            <label for="clienteId">Cliente y domicilio</label>
+            <select id="clienteId" th:field="*{clienteId}" required>
+                <option value="">Seleccioná un cliente</option>
+                <option th:each="cliente : ${clientes}"
+                        th:value="${cliente.id}"
+                        th:text="|${cliente.nombrePaciente} · ${cliente.domicilio}|"></option>
+            </select>
+            <small class="field-error" th:if="${#fields.hasErrors('clienteId')}" th:errors="*{clienteId}"></small>
+            <small class="muted" th:if="${#lists.isEmpty(clientes)}">Todavía no hay clientes registrados.</small>
+        </div>
+
+        <div class="field">
+            <label for="servicioDomicilioId">Servicio</label>
+            <select id="servicioDomicilioId" th:field="*{servicioDomicilioId}" required>
+                <option value="">Seleccioná un servicio</option>
+                <option th:each="servicio : ${servicios}"
+                        th:value="${servicio.id}"
+                        th:text="|${servicio.tipoServicio.etiqueta} · cliente $ ${servicio.valorHora}/h · socio $ ${servicio.valorHoraSocio}/h|"></option>
+            </select>
+            <small class="field-error" th:if="${#fields.hasErrors('servicioDomicilioId')}" th:errors="*{servicioDomicilioId}"></small>
+            <small class="muted" th:if="${#lists.isEmpty(servicios)}">Todavía no hay servicios registrados.</small>
+        </div>
+
+        <div class="form-actions">
+            <button class="button button-primary" type="submit"
+                    th:disabled="${#lists.isEmpty(sociosDisponibles) or #lists.isEmpty(servicios) or #lists.isEmpty(clientes)}">
+                Confirmar asignación
+            </button>
+        </div>
+    </form>
+</main>
+</body>
+</html>

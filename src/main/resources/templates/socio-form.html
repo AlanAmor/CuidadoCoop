@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Socio | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">SOCIOS</p>
+            <h1 th:text="${titulo}">Socio</h1>
+        </div>
+    </section>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <form class="content-card form-card" method="post" th:action="${accion}" th:object="${socio}">
+        <div class="field">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" th:field="*{nombre}">
+            <small class="field-error" th:errors="*{nombre}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="apellido">Apellido</label>
+            <input id="apellido" type="text" th:field="*{apellido}">
+            <small class="field-error" th:errors="*{apellido}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="dni">DNI (solo números)</label>
+            <input id="dni" type="text" th:field="*{dni}" inputmode="numeric">
+            <small class="field-error" th:errors="*{dni}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="direccion">Dirección</label>
+            <input id="direccion" type="text" th:field="*{direccion}">
+            <small class="field-error" th:errors="*{direccion}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="telefono">Teléfono</label>
+            <input id="telefono" type="text" th:field="*{telefono}">
+            <small class="field-error" th:errors="*{telefono}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="correo">Correo electrónico</label>
+            <input id="correo" type="email" th:field="*{correo}">
+            <small class="field-error" th:errors="*{correo}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="cbu">CBU (22 dígitos)</label>
+            <input id="cbu" type="text" th:field="*{cbu}" inputmode="numeric">
+            <small class="field-error" th:errors="*{cbu}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="especialidad">Especialidad</label>
+            <select id="especialidad" th:field="*{especialidad}">
+                <option th:each="e : ${especialidades}" th:value="${e.name()}" th:text="${e.etiqueta}"></option>
+            </select>
+            <small class="field-error" th:errors="*{especialidad}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="estado">Estado</label>
+            <select id="estado" th:field="*{estado}">
+                <option th:each="e : ${estados}" th:value="${e.name()}" th:text="${e.etiqueta}"></option>
+            </select>
+            <small class="field-error" th:errors="*{estado}"></small>
+        </div>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Guardar</button>
+            <a class="button button-secondary" th:href="@{/socios}">Cancelar</a>
+        </div>
+    </form>
+    <section th:replace="~{fragments/layout :: panelLegajo}"></section>
+</main>
+</body>
+</html>

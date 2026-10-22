@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Servicios | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">GESTIÓN</p>
+            <h1>Servicios</h1>
+            <p class="muted">Definí cada tipo de servicio con lo que se cobra al cliente y lo que se paga al socio por hora.</p>
+        </div>
+        <div class="quick-links">
+            <a class="button button-secondary" th:href="@{/tipos-servicio}">Tipos de servicio</a>
+            <a class="button button-primary" th:href="@{/servicios/nuevo}">Nuevo servicio</a>
+        </div>
+    </section>
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <div class="content-card table-card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Tipo</th><th>Cobro al cliente / hora</th><th>Pago al socio / hora</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="servicio : ${servicios}">
+                    <td th:text="${servicio.tipoServicio.etiqueta}"></td>
+                    <td th:text="|$ ${#numbers.formatDecimal(servicio.valorHora, 1, 'POINT', 2, 'COMMA')}|"></td>
+                    <td th:text="${servicio.valorHoraSocio != null} ? |$ ${#numbers.formatDecimal(servicio.valorHoraSocio, 1, 'POINT', 2, 'COMMA')}| : 'Sin definir'"></td>
+                    <td class="row-actions">
+                        <a class="button button-secondary" th:href="@{/servicios/{id}/editar(id=${servicio.id})}">Editar</a>
+                        <form method="post" th:action="@{/servicios/{id}/eliminar(id=${servicio.id})}"
+                              data-confirm="¿Eliminar este servicio? También se borrarán los turnos registrados en él.">
+                            <button class="button button-danger" type="submit">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(servicios)}">
+                    <td colspan="4" class="empty-state">Todavía no hay servicios. Creá el primero con "Nuevo servicio".</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>

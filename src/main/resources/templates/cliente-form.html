@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cliente | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">CLIENTES</p>
+            <h1 th:text="${titulo}">Cliente</h1>
+        </div>
+    </section>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <form class="content-card form-card" method="post" th:action="${accion}" th:object="${cliente}">
+        <div class="field">
+            <label for="nombreFamiliar">Nombre del familiar responsable</label>
+            <input id="nombreFamiliar" type="text" th:field="*{nombreFamiliar}">
+            <small class="field-error" th:errors="*{nombreFamiliar}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="telefono">Teléfono</label>
+            <input id="telefono" type="text" th:field="*{telefono}">
+            <small class="field-error" th:errors="*{telefono}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="correo">Correo electrónico</label>
+            <input id="correo" type="email" th:field="*{correo}">
+            <small class="field-error" th:errors="*{correo}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="nombrePaciente">Nombre del paciente</label>
+            <input id="nombrePaciente" type="text" th:field="*{nombrePaciente}">
+            <small class="field-error" th:errors="*{nombrePaciente}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="domicilio">Domicilio del servicio</label>
+            <input id="domicilio" type="text" th:field="*{domicilio}">
+            <small class="field-error" th:errors="*{domicilio}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="observacionMedica">Observación médica (opcional)</label>
+            <textarea id="observacionMedica" rows="3" th:field="*{observacionMedica}"></textarea>
+            <small class="field-error" th:errors="*{observacionMedica}"></small>
+        </div>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Guardar</button>
+            <a class="button button-secondary" th:href="@{/clientes}">Cancelar</a>
+        </div>
+    </form>
+    <section th:replace="~{fragments/layout :: panelLegajo}"></section>
+</main>
+</body>
+</html>

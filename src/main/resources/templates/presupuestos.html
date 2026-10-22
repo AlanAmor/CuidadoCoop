@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Presupuestos | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">DOCUMENTACIÓN</p>
+            <h1>Generar presupuesto</h1>
+            <p class="muted">Elegí el cliente y el servicio, y estimá las horas para generar un PDF imprimible.</p>
+        </div>
+    </section>
+    <form class="content-card form-card" method="get" th:action="@{/presupuestos/pdf}">
+        <div class="field">
+            <label for="clienteId">Cliente y domicilio</label>
+            <select id="clienteId" name="clienteId" required>
+                <option value="">Seleccioná un cliente</option>
+                <option th:each="cliente : ${clientes}"
+                        th:value="${cliente.id}"
+                        th:text="|${cliente.nombrePaciente} · ${cliente.domicilio}|"></option>
+            </select>
+            <small class="muted" th:if="${#lists.isEmpty(clientes)}">No hay clientes registrados para presupuestar.</small>
+        </div>
+        <div class="field field-spaced">
+            <label for="servicioId">Servicio</label>
+            <select id="servicioId" name="servicioId" required>
+                <option value="">Seleccioná un servicio</option>
+                <option th:each="servicio : ${servicios}"
+                        th:value="${servicio.id}"
+                        th:selected="${servicioId != null and servicioId == servicio.id}"
+                        th:text="|${servicio.tipoServicio.etiqueta} · $ ${servicio.valorHora}/hora|"></option>
+            </select>
+            <small class="muted" th:if="${#lists.isEmpty(servicios)}">No hay servicios registrados para presupuestar.</small>
+        </div>
+        <div class="field field-spaced">
+            <label for="horas">Horas estimadas</label>
+            <input id="horas" name="horas" type="number" min="0.01" step="0.01" th:value="${horas}" required>
+        </div>
+        <div class="field field-spaced">
+            <label for="alicuotaIva">IVA</label>
+            <select id="alicuotaIva" name="alicuotaIva">
+                <option th:each="a : ${alicuotas}" th:value="${a.name()}" th:text="${a.etiqueta}"
+                        th:selected="${a == alicuotaIva}"></option>
+            </select>
+        </div>
+        <div class="field field-spaced">
+            <label>
+                <input type="checkbox" name="pagoEfectivo" value="true" th:checked="${pagoEfectivo}">
+                Pago en efectivo (10% de descuento)
+            </label>
+        </div>
+        <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}"></div>
+        <table class="data-table" th:if="${calculo != null}">
+            <tbody>
+            <tr><td>Subtotal</td><td th:text="${#numbers.formatDecimal(calculo.subtotal, 1, 'POINT', 2, 'COMMA')}"></td></tr>
+            <tr th:if="${calculo.pagoEfectivo}"><td>Descuento efectivo (10%)</td><td th:text="${'- ' + #numbers.formatDecimal(calculo.descuento, 1, 'POINT', 2, 'COMMA')}"></td></tr>
+            <tr th:if="${calculo.alicuota.name() != 'SIN_IVA'}"><td th:text="${calculo.alicuota.etiqueta}"></td><td th:text="${#numbers.formatDecimal(calculo.iva, 1, 'POINT', 2, 'COMMA')}"></td></tr>
+            <tr><th>Total</th><th th:text="${#numbers.formatDecimal(calculo.total, 1, 'POINT', 2, 'COMMA')}"></th></tr>
+            </tbody>
+        </table>
+        <p class="form-hint">El total se calcula con el valor hora actual del servicio. El descuento se aplica antes del IVA. El PDF es orientativo y no constituye un comprobante fiscal.</p>
+        <div class="form-actions">
+            <button class="button" type="submit" formaction="/presupuestos/calculo">Ver cálculo</button>
+            <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(servicios)}">
+                Descargar presupuesto PDF
+            </button>
+        </div>
+    </form>
+</main>
+</body>
+</html>

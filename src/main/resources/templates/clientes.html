@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clientes | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">GESTIÓN</p>
+            <h1>Clientes</h1>
+            <p class="muted">Familias y pacientes que reciben el servicio.</p>
+        </div>
+        <a class="button button-primary" th:href="@{/clientes/nuevo}">Nuevo cliente</a>
+    </section>
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <div class="content-card table-card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Paciente</th><th>Familiar</th><th>Contacto</th><th>Domicilio</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="cliente : ${clientes}">
+                    <td th:text="${cliente.nombrePaciente}"></td>
+                    <td th:text="${cliente.nombreFamiliar}"></td>
+                    <td th:text="|${cliente.telefono} · ${cliente.correo}|"></td>
+                    <td th:text="${cliente.domicilio}"></td>
+                    <td class="row-actions">
+                        <a class="button button-secondary" th:href="@{/clientes/{id}/editar(id=${cliente.id})}">Editar</a>
+                        <form method="post" th:action="@{/clientes/{id}/eliminar(id=${cliente.id})}"
+                              data-confirm="¿Eliminar este cliente? También se borrarán sus servicios y turnos registrados.">
+                            <button class="button button-danger" type="submit">Eliminar</button>
+                        </form>
+                        <button class="button button-secondary" type="button" data-legajo-tipo="clientes"
+                                th:attr="data-legajo-id=${cliente.id},data-legajo-titulo=${cliente.nombrePaciente}">Legajo</button>
+                        <a class="button button-secondary" th:href="@{/clientes/{id}/historico/pdf(id=${cliente.id})}"
+                           title="Histórico completo de servicios en PDF">Histórico PDF</a>
+                        <a class="button button-secondary" th:href="@{/clientes/{id}/historico/excel(id=${cliente.id})}"
+                           title="Histórico completo de servicios en Excel">Excel</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(clientes)}">
+                    <td colspan="5" class="empty-state">Todavía no hay clientes. Creá el primero con "Nuevo cliente".</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>

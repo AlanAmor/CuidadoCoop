@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Retornos mensuales | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">MÓDULO FINANCIERO</p>
+            <h1>Retornos mensuales</h1>
+            <p class="muted">Consultá el resumen por socio y período.</p>
+        </div>
+    </section>
+
+    <div class="alert alert-error" th:if="${errorConsulta}" th:text="${errorConsulta}" role="alert"></div>
+
+    <form class="content-card filter-card" method="get" th:action="@{/liquidaciones/resultado}">
+        <div class="field">
+            <label for="socioId">Socio</label>
+            <select id="socioId" name="socioId" required>
+                <option value="">Seleccioná un socio</option>
+                <option th:each="socio : ${socios}"
+                        th:value="${socio.id}"
+                        th:selected="${liquidacion != null and liquidacion.socioId == socio.id}"
+                        th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="periodo">Período</label>
+            <input id="periodo" name="periodo" type="month" th:value="${periodoActual}" required>
+        </div>
+        <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(socios)}">
+            Consultar retorno
+        </button>
+    </form>
+
+    <section class="result-section" th:if="${liquidacion != null}">
+        <div class="page-heading result-heading">
+            <div>
+                <p class="eyebrow">RESULTADO</p>
+                <h2 th:text="${liquidacion.nombreSocio}">Socio</h2>
+                <p class="muted" th:text="${liquidacion.periodo}">Período</p>
+            </div>
+            <div class="total-box">
+                <span>Total retorno</span>
+                <strong th:text="|$ ${#numbers.formatDecimal(liquidacion.totalRetorno, 1, 2)}|">$ 0,00</strong>
+            </div>
+        </div>
+        <div class="metrics compact-metrics">
+            <article class="metric-card">
+                <span class="metric-label">Horas del período</span>
+                <strong class="metric-value" th:text="${#numbers.formatDecimal(liquidacion.totalHoras, 1, 2)}">0,00</strong>
+            </article>
+        </div>
+
+        <div class="content-card table-card">
+            <h3>Detalle por domicilio</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Domicilio</th>
+                        <th>Tipo de servicio</th>
+                        <th>Horas</th>
+                        <th>Importe</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="domicilio : ${liquidacion.domicilios}">
+                        <td th:text="${domicilio.domicilio}">Domicilio</td>
+                        <td th:text="${domicilio.tipoServicio}">Servicio</td>
+                        <td th:text="${#numbers.formatDecimal(domicilio.horas, 1, 2)}">0,00</td>
+                        <td th:text="|$ ${#numbers.formatDecimal(domicilio.importe, 1, 2)}|">$ 0,00</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(liquidacion.domicilios)}">
+                        <td colspan="4" class="empty-state">No hay asistencias registradas para este socio en el período.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <a class="button button-secondary export-button"
+               th:href="@{/liquidaciones/{socioId}/{periodo}/pdf(socioId=${liquidacion.socioId},periodo=${liquidacion.periodo})}">
+                Descargar comprobante PDF
+            </a>
+        </div>
+    </section>
+</main>
+</body>
+</html>

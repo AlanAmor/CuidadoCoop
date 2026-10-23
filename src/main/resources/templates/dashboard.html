@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel de gestión | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=2)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
@@ -74,7 +74,7 @@
         <section class="calendar-detail" id="calendar-detail" aria-label="Detalle del turno" hidden></section>
 
         <div class="availability-panels">
-            <section class="availability-card">
+            <section class="availability-card availability-card-socio">
                 <div class="availability-heading">
                     <div>
                         <h3>Socios disponibles</h3>
@@ -86,7 +86,7 @@
                     <li class="availability-empty">Cargando disponibilidad…</li>
                 </ul>
             </section>
-            <section class="availability-card">
+            <section class="availability-card availability-card-domicilio">
                 <div class="availability-heading">
                     <div>
                         <h3>Clientes sin turno en el período</h3>
@@ -114,6 +114,6 @@
         </div>
     </section>
 </main>
-<script th:src="@{/js/calendario.js}" defer></script>
+<script th:src="@{/js/calendario.js(v=2)}" defer></script>
 </body>
 </html>

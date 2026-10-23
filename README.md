@@ -71,7 +71,8 @@ Las pruebas incluyen una base H2 aislada para verificar el mapeo JPA y las consu
 ## Asignación por horario y edición de turnos
 
 - **Asignar turno** (`/asignaciones/nueva`) tiene dos pasos: primero se indica día y horario; luego se elige entre los socios disponibles.
-- Un socio está disponible si no es `INACTIVO` y no tiene otro turno que se superponga con ese día y horario.
+- Un socio está disponible si no es `INACTIVO`, trabaja ese día de la semana y no tiene otro turno que se superponga con ese día y horario.
+- **Días disponibles por socio**: al crear o editar un socio (pestaña Socios) se marcan los días de la semana en que puede trabajar (por defecto, todos; mínimo uno). Solo se le pueden asignar turnos en esos días, también en cuidados fijos. En bases existentes, ejecutá una vez `database\migrate_dias_disponibles.sql` para dejar a los socios actuales disponibles todos los días.
 - En el calendario, al abrir un turno, **Editar turno** permite cambiar fecha, horario, socio y cliente. Se guarda en la base de datos desde el mismo panel y se rechazan los solapamientos.
 - **Cuidados fijos (larga duración)**: en el paso 1, marcá "Repetir este horario", elegí duración (días, semanas o meses; máximo un año) y los días de la semana. Se crea un turno por cada fecha, todo o nada: si el socio tiene un turno en alguna fecha, no figura como disponible y, si hubiera un choque al confirmar, no se crea ningún turno. Cada turno se puede editar o eliminar luego desde el calendario.
 - **Históricos descargables**: en Socios y Clientes, los botones "Histórico PDF" y "Excel" bajan el historial completo de asistencias de un socio o de servicios de un cliente (también `/socios/{id}/historico/{pdf|excel}` y `/clientes/{id}/historico/{pdf|excel}`, con `desde` y `hasta` opcionales).

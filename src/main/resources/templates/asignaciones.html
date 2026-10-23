@@ -99,13 +99,48 @@
         <input type="hidden" name="dias" th:each="d : ${asignacion.dias}" th:value="${d}">
 
         <div class="field">
-            <label for="socioId">Socio disponible en ese horario</label>
-            <select id="socioId" th:field="*{socioId}" required>
-                <option value="">Seleccioná un socio</option>
-                <option th:each="socio : ${sociosDisponibles}"
-                        th:value="${socio.id}"
-                        th:text="|${socio.apellido}, ${socio.nombre} · ${socio.especialidad.etiqueta} · DNI ${socio.dni}|"></option>
-            </select>
+            <label for="socio-dropdown-toggle">Socio disponible en ese horario</label>
+            <div class="custom-dropdown" id="socio-dropdown">
+                <select id="socioId" th:field="*{socioId}" class="custom-dropdown-native" required>
+                    <option value="">Seleccioná un socio</option>
+                    <option th:each="socio : ${sociosDisponibles}"
+                            th:value="${socio.id}"
+                            th:text="|${socio.apellido}, ${socio.nombre} · ${socio.especialidad != null ? socio.especialidad.etiqueta : ''} · DNI ${socio.dni}|"></option>
+                </select>
+                <button type="button" class="custom-dropdown-toggle" id="socio-dropdown-toggle"
+                        role="combobox" aria-haspopup="listbox" aria-expanded="false"
+                        aria-controls="socio-dropdown-menu"
+                        th:attr="aria-invalid=${#fields.hasErrors('socioId')} ? 'true' : 'false'"
+                        th:disabled="${#lists.isEmpty(sociosDisponibles)}">
+                    <span class="custom-dropdown-label" id="socio-dropdown-label">
+                        <th:block th:if="${#lists.isEmpty(sociosDisponibles)}">Todos los socios tienen un turno en ese horario. Probá con otro día u horario.</th:block>
+                        <th:block th:unless="${#lists.isEmpty(sociosDisponibles)}">
+                            <th:block th:if="${asignacion.socioId != null}">
+                                <th:block th:each="s : ${sociosDisponibles}" th:if="${s.id == asignacion.socioId}"
+                                          th:text="|${s.apellido}, ${s.nombre} · ${s.especialidad != null ? s.especialidad.etiqueta : ''} · DNI ${s.dni}|"></th:block>
+                            </th:block>
+                            <th:block th:if="${asignacion.socioId == null or !#lists.contains(sociosDisponibles.![id], asignacion.socioId)}">Seleccioná un socio</th:block>
+                        </th:block>
+                    </span>
+                    <span class="custom-dropdown-arrow" aria-hidden="true">▾</span>
+                </button>
+                <div class="custom-dropdown-menu" id="socio-dropdown-menu" role="listbox"
+                     aria-labelledby="socio-dropdown-toggle" tabindex="-1" hidden>
+                    <div th:each="socio : ${sociosDisponibles}"
+                         class="custom-dropdown-item"
+                         role="option"
+                         tabindex="-1"
+                         th:id="|socio-opt-${socio.id}|"
+                         th:data-value="${socio.id}"
+                         th:classappend="${asignacion.socioId != null and asignacion.socioId == socio.id} ? ' is-selected' : ''"
+                         th:attr="aria-selected=${asignacion.socioId != null and asignacion.socioId == socio.id ? 'true' : 'false'}">
+                        <span class="custom-dropdown-item-text"
+                              th:text="|${socio.apellido}, ${socio.nombre} · ${socio.especialidad != null ? socio.especialidad.etiqueta : ''} · DNI ${socio.dni}|"></span>
+                        <span class="warning-badge-day"
+                              th:if="${socio.tieneTurnoMismoDia}">Ya tiene un servicio ese día</span>
+                    </div>
+                </div>
+            </div>
             <small class="field-error" th:if="${#fields.hasErrors('socioId')}" th:errors="*{socioId}"></small>
             <small class="muted" th:if="${#lists.isEmpty(sociosDisponibles)}">
                 Todos los socios tienen un turno en ese horario. Probá con otro día u horario.
@@ -144,5 +179,155 @@
         </div>
     </form>
 </main>
+<script>
+(() => {
+    const dropdown = document.getElementById("socio-dropdown");
+    if (!dropdown) return;
+    const select = dropdown.querySelector("select");
+    const toggle = dropdown.querySelector(".custom-dropdown-toggle");
+    const labelSpan = dropdown.querySelector(".custom-dropdown-label");
+    const menu = dropdown.querySelector(".custom-dropdown-menu");
+    const items = dropdown.querySelectorAll(".custom-dropdown-item");
+
+    let activeIndex = -1;
+
+    function setActive(index, scroll = true) {
+        if (items.length === 0) {
+            activeIndex = -1;
+            toggle.removeAttribute("aria-activedescendant");
+            return;
+        }
+        activeIndex = Math.max(0, Math.min(index, items.length - 1));
+        items.forEach((it, idx) => {
+            it.classList.toggle("is-active", idx === activeIndex);
+        });
+        const activeItem = items[activeIndex];
+        if (activeItem) {
+            toggle.setAttribute("aria-activedescendant", activeItem.id);
+            if (scroll) {
+                activeItem.scrollIntoView({block: "nearest"});
+            }
+        }
+    }
+
+    function closeMenu() {
+        menu.hidden = true;
+        toggle.setAttribute("aria-expanded", "false");
+        items.forEach(it => it.classList.remove("is-active"));
+        toggle.removeAttribute("aria-activedescendant");
+    }
+
+    function openMenu() {
+        if (toggle.disabled || items.length === 0) return;
+        menu.hidden = false;
+        toggle.setAttribute("aria-expanded", "true");
+        const currentIdx = Array.from(items).findIndex(it => it.classList.contains("is-selected"));
+        setActive(currentIdx >= 0 ? currentIdx : 0);
+    }
+
+    function selectOption(item) {
+        const val = item.dataset.value;
+        select.value = val;
+        const textSpan = item.querySelector(".custom-dropdown-item-text");
+        labelSpan.textContent = textSpan ? textSpan.textContent : "";
+        items.forEach((it, idx) => {
+            const isSel = (it === item);
+            it.classList.toggle("is-selected", isSel);
+            it.setAttribute("aria-selected", isSel ? "true" : "false");
+            if (isSel) activeIndex = idx;
+        });
+        closeMenu();
+        toggle.setAttribute("aria-invalid", "false");
+        toggle.focus();
+        select.dispatchEvent(new Event("change", {bubbles: true}));
+    }
+
+    toggle.addEventListener("click", e => {
+        e.stopPropagation();
+        if (menu.hidden) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener("click", e => {
+        if (!dropdown.contains(e.target)) {
+            closeMenu();
+        }
+    });
+
+    dropdown.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+            closeMenu();
+            toggle.focus();
+        } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            if (menu.hidden) {
+                openMenu();
+            } else if (items.length > 0) {
+                const nextIdx = activeIndex < items.length - 1 ? activeIndex + 1 : 0;
+                setActive(nextIdx);
+            }
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            if (menu.hidden) {
+                openMenu();
+            } else if (items.length > 0) {
+                const prevIdx = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
+                setActive(prevIdx);
+            }
+        } else if (e.key === "Home" && !menu.hidden && items.length > 0) {
+            e.preventDefault();
+            setActive(0);
+        } else if (e.key === "End" && !menu.hidden && items.length > 0) {
+            e.preventDefault();
+            setActive(items.length - 1);
+        } else if ((e.key === "Enter" || e.key === " ") && !menu.hidden) {
+            e.preventDefault();
+            if (activeIndex >= 0 && items[activeIndex]) {
+                selectOption(items[activeIndex]);
+            }
+        } else if (e.key === "Tab" && !menu.hidden) {
+            closeMenu();
+        }
+    });
+
+    items.forEach(item => {
+        item.addEventListener("click", e => {
+            e.stopPropagation();
+            selectOption(item);
+        });
+    });
+
+    const form = dropdown.closest("form");
+    if (form) {
+        select.removeAttribute("required");
+        form.addEventListener("submit", e => {
+            if (!select.value) {
+                e.preventDefault();
+                toggle.setAttribute("aria-invalid", "true");
+                openMenu();
+                toggle.focus();
+            }
+        });
+    }
+
+    if (select.value) {
+        const selectedItem = dropdown.querySelector(`.custom-dropdown-item[data-value="${select.value}"]`);
+        if (selectedItem) {
+            const textSpan = selectedItem.querySelector(".custom-dropdown-item-text");
+            if (textSpan) labelSpan.textContent = textSpan.textContent;
+            selectedItem.classList.add("is-selected");
+            selectedItem.setAttribute("aria-selected", "true");
+        } else {
+            select.value = "";
+            labelSpan.textContent = "Seleccioná un socio";
+        }
+    } else if (!labelSpan.textContent || !labelSpan.textContent.trim()) {
+        labelSpan.textContent = "Seleccioná un socio";
+    }
+})();
+</script>
 </body>
 </html>

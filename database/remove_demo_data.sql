@@ -21,6 +21,9 @@ DELETE FROM clientes
 WHERE nombre_familiar LIKE 'Familia Demo %'
   AND nombre_paciente LIKE 'Demo Paciente %';
 
+DELETE FROM socio_dias_disponibles
+WHERE socio_id IN (SELECT id FROM socios WHERE dni BETWEEN '20900001' AND '20900010');
+
 DELETE FROM socios
 WHERE dni BETWEEN '20900001' AND '20900010';
 

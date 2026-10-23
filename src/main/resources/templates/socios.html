@@ -23,7 +23,7 @@
         <div class="table-wrap">
             <table>
                 <thead>
-                <tr><th>Socio</th><th>DNI</th><th>Contacto</th><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr>
+                <tr><th>Socio</th><th>DNI</th><th>Contacto</th><th>Especialidad</th><th>Días disponibles</th><th>Estado</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                 <tr th:each="socio : ${socios}">
@@ -31,6 +31,11 @@
                     <td th:text="${socio.dni}"></td>
                     <td th:text="|${socio.telefono} · ${socio.correo}|"></td>
                     <td th:text="${socio.especialidad.etiqueta}"></td>
+                    <td>
+                        <span class="badge" th:each="d : ${T(java.time.DayOfWeek).values()}"
+                              th:if="${socio.diasDisponibles.contains(d)}"
+                              th:text="${#strings.capitalize(d.getDisplayName(T(java.time.format.TextStyle).SHORT, T(java.util.Locale).forLanguageTag('es')))}"></span>
+                    </td>
                     <td><span class="badge" th:text="${socio.estado.etiqueta}"></span></td>
                     <td class="row-actions">
                         <a class="button button-secondary" th:href="@{/socios/{id}/editar(id=${socio.id})}">Editar</a>
@@ -47,7 +52,7 @@
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(socios)}">
-                    <td colspan="6" class="empty-state">Todavía no hay socios. Creá el primero con "Nuevo socio".</td>
+                    <td colspan="7" class="empty-state">Todavía no hay socios. Creá el primero con "Nuevo socio".</td>
                 </tr>
                 </tbody>
             </table>

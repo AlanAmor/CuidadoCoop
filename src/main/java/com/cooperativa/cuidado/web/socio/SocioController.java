@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.DayOfWeek;
+import java.time.format.TextStyle;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+
 @Controller
 @RequestMapping("/socios")
 public class SocioController {
@@ -117,6 +123,11 @@ public class SocioController {
         model.addAttribute("accion", accion);
         model.addAttribute("estados", EstadoSocio.values());
         model.addAttribute("especialidades", Especialidad.values());
+        Map<DayOfWeek, String> diasSemana = new LinkedHashMap<>();
+        for (DayOfWeek dia : DayOfWeek.values()) {
+            diasSemana.put(dia, dia.getDisplayName(TextStyle.FULL, Locale.forLanguageTag("es")));
+        }
+        model.addAttribute("diasSemana", diasSemana);
         return "socio-form";
     }
 }

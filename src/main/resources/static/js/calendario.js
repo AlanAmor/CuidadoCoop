@@ -82,10 +82,24 @@
                 currentEvents = data.eventos || [];
                 renderCalendar(range, view, currentEvents);
                 renderList(availablePartners, availableCount, data.sociosDisponibles || [],
-                    item => `${item.nombre} · ${label(item.especialidad)}`,
+                    item => {
+                        const row = createElement("li", "availability-item availability-item-socio");
+                        const socioSpan = createElement("strong", "availability-text-socio", item.nombre);
+                        const sep = createElement("span", "availability-sep", " · ");
+                        const espSpan = createElement("span", "availability-tag-servicio", label(item.especialidad));
+                        row.append(socioSpan, sep, espSpan);
+                        return row;
+                    },
                     "No hay socios marcados como disponibles actualmente.");
                 renderList(unassignedServices, unassignedCount, data.clientesSinTurno || [],
-                    item => `${item.paciente} · ${item.domicilio}`,
+                    item => {
+                        const row = createElement("li", "availability-item availability-item-domicilio");
+                        const pacSpan = createElement("strong", "availability-text-paciente", item.paciente);
+                        const sep = createElement("span", "availability-sep", " · ");
+                        const domSpan = createElement("span", "availability-text-domicilio", item.domicilio);
+                        row.append(pacSpan, sep, domSpan);
+                        return row;
+                    },
                     "Todos los clientes tienen turnos en el período.");
             })
             .catch(error => {
@@ -234,15 +248,38 @@
     function showDetail(event) {
         detailBox.replaceChildren();
         detailBox.hidden = false;
-        const title = createElement("h3", "", event.paciente);
-        const lines = [
-            `Socio: ${event.nombreSocio} · DNI ${event.dniSocio}`,
-            `Domicilio: ${event.domicilio}`,
-            `Servicio: ${label(event.tipoServicio)}`,
-            `Horario: ${time(event.inicio)} a ${time(event.fin)} · ${dateText(event.inicio)}`
+        const title = createElement("h3", "detail-title", event.paciente);
+        const items = [
+            {
+                className: "detail-item detail-item-socio",
+                label: "Socio:",
+                value: `${event.nombreSocio} · DNI ${event.dniSocio}`
+            },
+            {
+                className: "detail-item detail-item-domicilio",
+                label: "Domicilio:",
+                value: event.domicilio
+            },
+            {
+                className: "detail-item detail-item-servicio",
+                label: "Servicio:",
+                value: label(event.tipoServicio)
+            },
+            {
+                className: "detail-item detail-item-horario",
+                label: "Horario:",
+                value: `${time(event.inicio)} a ${time(event.fin)} · ${dateText(event.inicio)}`
+            }
         ];
-        detailBox.appendChild(title);
-        lines.forEach(line => detailBox.appendChild(createElement("p", "muted", line)));
+        const itemsContainer = createElement("div", "detail-items");
+        items.forEach(item => {
+            const p = createElement("p", item.className);
+            const strong = createElement("strong", "detail-item-label", `${item.label} `);
+            const span = createElement("span", "detail-item-value", item.value);
+            p.append(strong, span);
+            itemsContainer.appendChild(p);
+        });
+        detailBox.append(title, itemsContainer);
 
         const actions = createElement("div", "form-actions");
         const close = createElement("button", "button button-quiet", "Cerrar");
@@ -280,7 +317,7 @@
         const dateField = createInput("Fecha", "date", event.fecha);
         const startField = createInput("Hora de inicio", "time", time(event.inicio));
         const endField = createInput("Hora de fin", "time", time(event.fin));
-        const partnerField = createSelect("Socio disponible en ese horario");
+        const partnerField = createCustomPartnerDropdown("Socio disponible en ese horario");
         const clientField = createSelect("Cliente y domicilio");
         const serviceField = createSelect("Servicio");
 
@@ -307,7 +344,7 @@
         const loadPartners = selectedId => {
             const request = ++partnerRequest;
             if (!dateField.input.value || !startField.input.value || !endField.input.value) {
-                fillSelect(partnerField.select, [], "Completá día y horario", null);
+                partnerField.setPlaceholder("Completá día y horario");
                 return;
             }
             const params = new URLSearchParams({
@@ -323,13 +360,13 @@
                         return;
                     }
                     if (!ok) {
-                        fillSelect(partnerField.select, [], "No hay socios para mostrar", null);
+                        partnerField.setPlaceholder("No hay socios para mostrar");
                         showError(body.error || "No se pudo consultar la disponibilidad.");
                         return;
                     }
                     showError("");
-                    fillSelect(partnerField.select,
-                        body.map(item => ({value: item.socioId, text: `${item.nombre} · ${label(item.especialidad)}`})),
+                    partnerField.updateOptions(
+                        body,
                         body.length ? "Seleccioná un socio" : "Todos los socios están ocupados en ese horario",
                         selectedId);
                 })
@@ -357,6 +394,9 @@
 
         save.addEventListener("click", () => {
             showError("");
+            if (!partnerField.select.value) {
+                partnerField.toggle.setAttribute("aria-invalid", "true");
+            }
             save.disabled = true;
             fetch(`/api/asistencias/${event.asistenciaId}`, {
                 method: "POST",
@@ -407,6 +447,237 @@
         const select = document.createElement("select");
         wrapper.append(createElement("label", "", text), select);
         return {wrapper, select};
+    }
+
+    function createCustomPartnerDropdown(text) {
+        const wrapper = createElement("div", "field field-spaced");
+        const labelEl = createElement("label", "", text);
+        labelEl.htmlFor = "edit-turno-socio-toggle";
+        wrapper.appendChild(labelEl);
+
+        const container = createElement("div", "custom-dropdown");
+        const select = document.createElement("select");
+        select.className = "custom-dropdown-native";
+        select.id = "edit-turno-socio-native";
+        select.name = "socioId";
+
+        const toggle = createElement("button", "custom-dropdown-toggle");
+        toggle.id = "edit-turno-socio-toggle";
+        toggle.type = "button";
+        toggle.setAttribute("role", "combobox");
+        toggle.setAttribute("aria-haspopup", "listbox");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-controls", "edit-turno-socio-menu");
+        toggle.setAttribute("aria-invalid", "false");
+
+        const labelSpan = createElement("span", "custom-dropdown-label", "Completá día y horario");
+        const arrow = createElement("span", "custom-dropdown-arrow", "▾");
+        arrow.setAttribute("aria-hidden", "true");
+        toggle.append(labelSpan, arrow);
+
+        const menu = createElement("div", "custom-dropdown-menu");
+        menu.id = "edit-turno-socio-menu";
+        menu.setAttribute("role", "listbox");
+        menu.setAttribute("aria-labelledby", "edit-turno-socio-toggle");
+        menu.setAttribute("tabindex", "-1");
+        menu.hidden = true;
+
+        let optionsData = [];
+        let activeIndex = -1;
+
+        function setActive(index, scroll = true) {
+            const items = menu.querySelectorAll(".custom-dropdown-item");
+            if (items.length === 0) {
+                activeIndex = -1;
+                toggle.removeAttribute("aria-activedescendant");
+                return;
+            }
+            activeIndex = Math.max(0, Math.min(index, items.length - 1));
+            items.forEach((el, idx) => {
+                el.classList.toggle("is-active", idx === activeIndex);
+            });
+            const activeEl = items[activeIndex];
+            if (activeEl) {
+                toggle.setAttribute("aria-activedescendant", activeEl.id);
+                if (scroll) {
+                    activeEl.scrollIntoView({block: "nearest"});
+                }
+            }
+        }
+
+        function closeMenu() {
+            menu.hidden = true;
+            toggle.setAttribute("aria-expanded", "false");
+            menu.querySelectorAll(".custom-dropdown-item").forEach(el => el.classList.remove("is-active"));
+            toggle.removeAttribute("aria-activedescendant");
+        }
+
+        function openMenu() {
+            if (toggle.disabled || optionsData.length === 0) return;
+            menu.hidden = false;
+            toggle.setAttribute("aria-expanded", "true");
+            const currentIdx = optionsData.findIndex(it => Number(it.socioId) === Number(select.value));
+            setActive(currentIdx >= 0 ? currentIdx : 0);
+        }
+
+        toggle.addEventListener("click", e => {
+            e.stopPropagation();
+            if (menu.hidden) {
+                openMenu();
+            } else {
+                closeMenu();
+            }
+        });
+
+        const onDocClick = e => {
+            if (!document.contains(container)) {
+                document.removeEventListener("click", onDocClick);
+                return;
+            }
+            if (!container.contains(e.target)) {
+                closeMenu();
+            }
+        };
+        document.addEventListener("click", onDocClick);
+
+        container.addEventListener("keydown", e => {
+            if (e.key === "Escape") {
+                closeMenu();
+                toggle.focus();
+            } else if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (menu.hidden) {
+                    openMenu();
+                } else if (optionsData.length > 0) {
+                    const nextIdx = activeIndex < optionsData.length - 1 ? activeIndex + 1 : 0;
+                    setActive(nextIdx);
+                }
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (menu.hidden) {
+                    openMenu();
+                } else if (optionsData.length > 0) {
+                    const prevIdx = activeIndex > 0 ? activeIndex - 1 : optionsData.length - 1;
+                    setActive(prevIdx);
+                }
+            } else if (e.key === "Home" && !menu.hidden && optionsData.length > 0) {
+                e.preventDefault();
+                setActive(0);
+            } else if (e.key === "End" && !menu.hidden && optionsData.length > 0) {
+                e.preventDefault();
+                setActive(optionsData.length - 1);
+            } else if ((e.key === "Enter" || e.key === " ") && !menu.hidden) {
+                e.preventDefault();
+                if (activeIndex >= 0 && optionsData[activeIndex]) {
+                    selectItem(optionsData[activeIndex].socioId);
+                    closeMenu();
+                    toggle.focus();
+                }
+            } else if (e.key === "Tab" && !menu.hidden) {
+                closeMenu();
+            }
+        });
+
+        function selectItem(socioId) {
+            select.value = socioId !== null && socioId !== undefined ? String(socioId) : "";
+            const found = optionsData.find(item => Number(item.socioId) === Number(socioId));
+            if (found) {
+                labelSpan.textContent = `${found.nombre} · ${label(found.especialidad)}`;
+            } else if (optionsData.length === 0) {
+                labelSpan.textContent = select.dataset.placeholder || "No hay socios para mostrar";
+            } else {
+                labelSpan.textContent = "Seleccioná un socio";
+            }
+            const items = menu.querySelectorAll(".custom-dropdown-item");
+            items.forEach((el, idx) => {
+                const isSel = Number(el.dataset.value) === Number(socioId);
+                el.classList.toggle("is-selected", isSel);
+                el.setAttribute("aria-selected", isSel ? "true" : "false");
+                if (isSel) activeIndex = idx;
+            });
+            if (activeIndex >= 0 && items[activeIndex]) {
+                toggle.setAttribute("aria-activedescendant", items[activeIndex].id);
+            }
+            toggle.setAttribute("aria-invalid", "false");
+            select.dispatchEvent(new Event("change"));
+        }
+
+        function updateOptions(items, placeholder, selectedId) {
+            optionsData = items || [];
+            select.dataset.placeholder = placeholder;
+            select.replaceChildren();
+
+            const emptyOption = document.createElement("option");
+            emptyOption.value = "";
+            emptyOption.textContent = placeholder;
+            select.appendChild(emptyOption);
+
+            menu.replaceChildren();
+
+            if (optionsData.length === 0) {
+                toggle.disabled = true;
+                labelSpan.textContent = placeholder;
+                select.value = "";
+                closeMenu();
+                return;
+            }
+
+            toggle.disabled = false;
+            optionsData.forEach(item => {
+                const opt = document.createElement("option");
+                opt.value = item.socioId;
+                opt.textContent = `${item.nombre} · ${label(item.especialidad)}`;
+                select.appendChild(opt);
+
+                const itemDiv = createElement("div", "custom-dropdown-item");
+                itemDiv.id = `edit-partner-opt-${item.socioId}`;
+                itemDiv.setAttribute("role", "option");
+                itemDiv.setAttribute("tabindex", "-1");
+                itemDiv.dataset.value = item.socioId;
+                const isSelected = selectedId !== null && selectedId !== undefined && Number(item.socioId) === Number(selectedId);
+                itemDiv.setAttribute("aria-selected", isSelected ? "true" : "false");
+
+                const textSpan = createElement("span", "custom-dropdown-item-text",
+                    `${item.nombre} · ${label(item.especialidad)}`);
+                itemDiv.appendChild(textSpan);
+
+                if (item.tieneTurnoMismoDia) {
+                    const warningSpan = createElement("span", "warning-badge-day", "Ya tiene un servicio ese día");
+                    itemDiv.appendChild(warningSpan);
+                }
+
+                itemDiv.addEventListener("click", e => {
+                    e.stopPropagation();
+                    selectItem(item.socioId);
+                    closeMenu();
+                    toggle.focus();
+                });
+
+                menu.appendChild(itemDiv);
+            });
+
+            if (selectedId !== null && selectedId !== undefined && optionsData.some(it => Number(it.socioId) === Number(selectedId))) {
+                selectItem(selectedId);
+            } else {
+                select.value = "";
+                labelSpan.textContent = placeholder;
+                menu.querySelectorAll(".custom-dropdown-item").forEach(el => {
+                    el.classList.remove("is-selected");
+                    el.setAttribute("aria-selected", "false");
+                });
+            }
+        }
+
+        container.append(select, toggle, menu);
+        wrapper.appendChild(container);
+
+        return {
+            wrapper,
+            select,
+            toggle,
+            updateOptions,
+            setPlaceholder: (text) => updateOptions([], text, null)
+        };
     }
 
     function fillSelect(select, options, placeholder, selectedId) {
@@ -481,14 +752,21 @@
         return inicio < finDia && fin > inicioDia;
     }
 
-    function renderList(list, count, items, textFor, emptyText) {
+    function renderList(list, count, items, renderItem, emptyText) {
         count.textContent = String(items.length);
         list.replaceChildren();
         if (!items.length) {
-            list.appendChild(createMessage(emptyText, "availability-empty"));
+            list.appendChild(createElement("li", "availability-empty", emptyText));
             return;
         }
-        items.forEach(item => list.appendChild(createMessage(textFor(item), "availability-item")));
+        items.forEach(item => {
+            const rendered = renderItem(item);
+            if (rendered instanceof Node) {
+                list.appendChild(rendered);
+            } else {
+                list.appendChild(createElement("li", "availability-item", rendered));
+            }
+        });
     }
 
     function rangeFor(date, view) {

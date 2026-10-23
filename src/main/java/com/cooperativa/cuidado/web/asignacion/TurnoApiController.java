@@ -61,7 +61,8 @@ public class TurnoApiController {
                     .map(socio -> new SocioDisponibleCalendario(
                             socio.getId(),
                             socio.getApellido() + ", " + socio.getNombre(),
-                            socio.getEspecialidad().name()))
+                            socio.getEspecialidad() != null ? socio.getEspecialidad().name() : null,
+                            socio.isTieneTurnoMismoDia()))
                     .toList();
             return ResponseEntity.ok(socios);
         } catch (DatosInvalidosException ex) {

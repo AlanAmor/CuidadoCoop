@@ -141,7 +141,9 @@ class InterfazWebTest {
 
         mockMvc.perform(get("/api/socios/disponibles")
                         .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "16:00"))
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.nombre == 'Ocupado, Ana')].tieneTurnoMismoDia").value(true))
+                .andExpect(jsonPath("$[?(@.nombre == 'Libre, Ana')].tieneTurnoMismoDia").value(false));
 
         Long turnoId = asistenciaRepository.findAll().get(0).getId();
         mockMvc.perform(get("/api/socios/disponibles")
@@ -153,6 +155,306 @@ class InterfazWebTest {
                         .param("fecha", "2026-10-21").param("horaInicio", "09:00").param("horaFin", "09:00"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void apiSociosDisponiblesDetectaTurnoMismoDiaYExcluyeSolapados() throws Exception {
+        Socio socioConTurno = socioRepository.save(crearSocio("30000010", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioConTurno.setApellido("ConTurno");
+        socioRepository.save(socioConTurno);
+
+        Socio socioLibre = socioRepository.save(crearSocio("30000020", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioLibre.setApellido("TotalmenteLibre");
+        socioRepository.save(socioLibre);
+
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+        // Turno existente de 08:00 a 10:00 el 2026-10-21
+        guardarAsistencia(socioConTurno, servicio, LocalDate.of(2026, 10, 21));
+
+        // 1. Horario solapado (09:00 a 11:00): socioConTurno NO debe aparecer
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "09:00").param("horaFin", "11:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].nombre").value("TotalmenteLibre, Ana"))
+                .andExpect(jsonPath("$[0].tieneTurnoMismoDia").value(false));
+
+        // 2. Horario no solapado en el mismo día (14:00 a 18:00): ambos aparecen, y socioConTurno tiene tieneTurnoMismoDia=true
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.nombre == 'ConTurno, Ana')].tieneTurnoMismoDia").value(true))
+                .andExpect(jsonPath("$[?(@.nombre == 'TotalmenteLibre, Ana')].tieneTurnoMismoDia").value(false));
+
+        // 3. Turno contiguo en límite exacto (10:00 a 14:00): no se solapa con el turno previo 08:00-10:00 y marca mismo día
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "10:00").param("horaFin", "14:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.nombre == 'ConTurno, Ana')].tieneTurnoMismoDia").value(true));
+    }
+
+    @Test
+    void apiSociosDisponiblesDetectaTurnoMismoDiaConTurnoSolicitadoNocturno() throws Exception {
+        Socio socioConTurno = socioRepository.save(crearSocio("30000055", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioConTurno.setApellido("Nocturno");
+        socioRepository.save(socioConTurno);
+
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+        // Turno existente el 2026-10-22 de 14:00 a 18:00
+        guardarAsistencia(socioConTurno, servicio, LocalDate.of(2026, 10, 22));
+
+        // Turno solicitado nocturno del 2026-10-21 22:00 al 2026-10-22 06:00
+        // Debe detectar que el socio ya trabaja el día 22 y marcar tieneTurnoMismoDia=true
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "22:00").param("horaFin", "06:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.nombre == 'Nocturno, Ana')].tieneTurnoMismoDia").value(true));
+    }
+
+    @Test
+    void formularioAsignacionMuestraEtiquetaAdvertenciaMismoDiaYPermiteAsignar() throws Exception {
+        Socio socioConTurno = socioRepository.save(crearSocio("30000030", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioConTurno.setApellido("ConTurno");
+        socioConTurno.setNombre("Belen");
+        socioRepository.save(socioConTurno);
+
+        Socio socioLibre = socioRepository.save(crearSocio("30000040", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioLibre.setApellido("Libre");
+        socioLibre.setNombre("Carlos");
+        socioRepository.save(socioLibre);
+
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+        Cliente cliente = clientePorDefecto();
+
+        // Turno existente de 08:00 a 10:00 el 2026-10-21 para socioConTurno
+        guardarAsistencia(socioConTurno, servicio, LocalDate.of(2026, 10, 21));
+
+        // Ver socios disponibles para 2026-10-21 de 14:00 a 18:00 (no solapado)
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ConTurno, Belen")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Libre, Carlos")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Ya tiene un servicio ese día")));
+
+        // Ver socios disponibles para 2026-10-21 de 09:00 a 11:00 (solapado con el turno de socioConTurno)
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-21").param("horaInicio", "09:00").param("horaFin", "11:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Libre, Carlos")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ConTurno, Belen"))));
+
+        // Asignar el turno para socioConTurno en horario no solapado a pesar de tener otro turno ese día
+        mockMvc.perform(post("/asignaciones")
+                        .param("socioId", socioConTurno.getId().toString())
+                        .param("clienteId", cliente.getId().toString())
+                        .param("servicioDomicilioId", servicio.getId().toString())
+                        .param("fecha", "2026-10-21")
+                        .param("horaInicio", "14:00")
+                        .param("horaFin", "18:00"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/asignaciones/nueva"));
+
+        // Se deben haber registrado los 2 turnos para socioConTurno en el mismo día
+        org.junit.jupiter.api.Assertions.assertEquals(2, asistenciaRepository.findAllBySocioIdAndFechaBetween(
+                socioConTurno.getId(), LocalDate.of(2026, 10, 21), LocalDate.of(2026, 10, 21)).size());
+    }
+
+    @Test
+    void cuidadoFijoPaso2MuestraAdvertenciaMismoDiaParaTurnoNoSolapadoYExcluyeSolapado() throws Exception {
+        Socio socioConTurno = socioRepository.save(crearSocio("30000050", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioConTurno.setApellido("SerieA");
+        socioConTurno.setNombre("Alba");
+        socioRepository.save(socioConTurno);
+
+        Socio socioSolapado = socioRepository.save(crearSocio("30000060", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socioSolapado.setApellido("SerieB");
+        socioSolapado.setNombre("Bernardo");
+        socioRepository.save(socioSolapado);
+
+        Socio socioLibre = socioRepository.save(crearSocio("30000070", EstadoSocio.DISPONIBLE_REEMPLAZO));
+        socioLibre.setApellido("SerieC");
+        socioLibre.setNombre("Cecilia");
+        socioRepository.save(socioLibre);
+
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+
+        // socioConTurno tiene turno no solapado el 2026-10-12 de 08:00 a 10:00
+        guardarAsistencia(socioConTurno, servicio, LocalDate.of(2026, 10, 12));
+        // socioSolapado tiene turno solapado el 2026-10-19 de 14:00 a 18:00
+        Asistencia turnoSolapado = new Asistencia();
+        turnoSolapado.setSocio(socioSolapado);
+        turnoSolapado.setCliente(clientePorDefecto());
+        turnoSolapado.setServicioDomicilio(servicio);
+        turnoSolapado.setFecha(LocalDate.of(2026, 10, 19));
+        turnoSolapado.setHoraInicio(LocalTime.of(14, 0));
+        turnoSolapado.setHoraFin(LocalTime.of(18, 0));
+        asistenciaRepository.saveAndFlush(turnoSolapado);
+
+        // Paso 2 para cuidado fijo los lunes de 14:00 a 18:00 durante 3 semanas (12, 19 y 26 de octubre)
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-12").param("horaInicio", "14:00").param("horaFin", "18:00")
+                        .param("repetir", "true").param("unidad", "SEMANAS").param("cantidad", "3")
+                        .param("dias", "MONDAY"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("SerieA, Alba")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("SerieC, Cecilia")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("SerieB, Bernardo"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Ya tiene un servicio ese día")));
+
+        // Confirmar asignación de la serie para socioConTurno
+        mockMvc.perform(post("/asignaciones")
+                        .param("socioId", socioConTurno.getId().toString())
+                        .param("clienteId", clientePorDefecto().getId().toString())
+                        .param("servicioDomicilioId", servicio.getId().toString())
+                        .param("fecha", "2026-10-12")
+                        .param("horaInicio", "14:00")
+                        .param("horaFin", "18:00")
+                        .param("repetir", "true")
+                        .param("unidad", "SEMANAS")
+                        .param("cantidad", "3")
+                        .param("dias", "MONDAY"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/asignaciones/nueva"));
+
+        // Se deben haber creado 3 turnos de la serie + 1 previo = 4 turnos para socioConTurno
+        org.junit.jupiter.api.Assertions.assertEquals(4, asistenciaRepository.findAllBySocioIdAndFechaBetween(
+                socioConTurno.getId(), LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 26)).size());
+    }
+
+    @Test
+    void apiSociosDisponiblesExcluyeAsistenciaIdYDetectaOtroTurnoMismoDia() throws Exception {
+        Socio socio = socioRepository.save(crearSocio("30000080", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socio.setApellido("Editado");
+        socio.setNombre("Daniel");
+        socioRepository.save(socio);
+
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+
+        // Turno 1 siendo editado: 14:00 a 18:00
+        Asistencia turno1 = new Asistencia();
+        turno1.setSocio(socio);
+        turno1.setCliente(clientePorDefecto());
+        turno1.setServicioDomicilio(servicio);
+        turno1.setFecha(LocalDate.of(2026, 10, 21));
+        turno1.setHoraInicio(LocalTime.of(14, 0));
+        turno1.setHoraFin(LocalTime.of(18, 0));
+        turno1 = asistenciaRepository.saveAndFlush(turno1);
+
+        // Sin otro turno: al excluir turno1, el socio está libre y tieneTurnoMismoDia=false
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00")
+                        .param("excluirAsistenciaId", turno1.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.nombre == 'Editado, Daniel')].tieneTurnoMismoDia").value(false));
+
+        // Turno 2 no solapado el mismo día: 08:00 a 10:00
+        guardarAsistencia(socio, servicio, LocalDate.of(2026, 10, 21));
+
+        // Con turno 2: al excluir turno1, el socio está libre y tieneTurnoMismoDia=true
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00")
+                        .param("excluirAsistenciaId", turno1.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.nombre == 'Editado, Daniel')].tieneTurnoMismoDia").value(true));
+    }
+
+    @Test
+    void formularioAsignacionRenderizaAtributosAriaParaAccesibilidad() throws Exception {
+        Socio socio = socioRepository.save(crearSocio("30000090", EstadoSocio.ACTIVO_EN_SERVICIO));
+        socio.setApellido("Accesible");
+        socio.setNombre("Elena");
+        socioRepository.save(socio);
+
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("role=\"combobox\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-controls=\"socio-dropdown-menu\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-haspopup=\"listbox\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("role=\"listbox\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("role=\"option\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=")));
+    }
+
+    @Test
+    void submisionPaso2SinSeleccionarSocioDisparaValidacion() throws Exception {
+        Socio socio = socioRepository.save(crearSocio("30000095", EstadoSocio.DISPONIBLE_REEMPLAZO));
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+        Cliente cliente = clientePorDefecto();
+
+        // Enviar formulario sin socioId
+        mockMvc.perform(post("/asignaciones")
+                        .param("clienteId", cliente.getId().toString())
+                        .param("servicioDomicilioId", servicio.getId().toString())
+                        .param("fecha", "2026-10-21")
+                        .param("horaInicio", "14:00")
+                        .param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Seleccioná un socio disponible")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-invalid=\"true\"")));
+
+        // Ningún turno debió haberse persistido
+        org.junit.jupiter.api.Assertions.assertEquals(0, asistenciaRepository.count());
+    }
+
+    @Test
+    void paso2YApiManejanCeroSociosDisponiblesCuandoTodosEstanOcupados() throws Exception {
+        Socio socio = socioRepository.save(crearSocio("30000096", EstadoSocio.ACTIVO_EN_SERVICIO));
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+
+        // Ocupamos al único socio en el horario 14:00 a 18:00
+        Asistencia turnoOcupado = new Asistencia();
+        turnoOcupado.setSocio(socio);
+        turnoOcupado.setCliente(clientePorDefecto());
+        turnoOcupado.setServicioDomicilio(servicio);
+        turnoOcupado.setFecha(LocalDate.of(2026, 10, 21));
+        turnoOcupado.setHoraInicio(LocalTime.of(14, 0));
+        turnoOcupado.setHoraFin(LocalTime.of(18, 0));
+        asistenciaRepository.saveAndFlush(turnoOcupado);
+
+        // Paso 2 en asignaciones: dropdown deshabilitado y mensaje de ocupados
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Todos los socios tienen un turno en ese horario")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled=\"disabled\"")));
+
+        // API de socios disponibles: retorna lista vacía
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("[]"));
+    }
+
+    @Test
+    void dropdownManejaCaracteresEspecialesAcentosYEspecialidadLarga() throws Exception {
+        Socio socio = crearSocio("30000097", EstadoSocio.DISPONIBLE_REEMPLAZO);
+        socio.setNombre("María Inés");
+        socio.setApellido("Pérez Ñandú");
+        socio.setEspecialidad(com.cooperativa.cuidado.socio.Especialidad.ENFERMERO);
+        socio = socioRepository.save(socio);
+
+        ServicioDomicilio servicio = servicioRepository.saveAndFlush(crearServicio());
+        // Turno no solapado el mismo día de 08:00 a 10:00
+        guardarAsistencia(socio, servicio, LocalDate.of(2026, 10, 21));
+
+        // Vista HTML: verifica nombres con acentos/ñ, etiqueta de especialidad y badge de advertencia
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Pérez Ñandú, María Inés")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Enfermero/a")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Ya tiene un servicio ese día")));
+
+        // Endpoint JSON para calendario: verifica estructura y booleano
+        mockMvc.perform(get("/api/socios/disponibles")
+                        .param("fecha", "2026-10-21").param("horaInicio", "14:00").param("horaFin", "18:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.nombre == 'Pérez Ñandú, María Inés')].especialidad").value("ENFERMERO"))
+                .andExpect(jsonPath("$[?(@.nombre == 'Pérez Ñandú, María Inés')].tieneTurnoMismoDia").value(true));
     }
 
     @Test
@@ -585,6 +887,66 @@ class InterfazWebTest {
         mockMvc.perform(post("/socios/" + socio.getId() + "/eliminar"))
                 .andExpect(redirectedUrl("/socios"));
         org.junit.jupiter.api.Assertions.assertEquals(0, socioRepository.count());
+    }
+
+    @Test
+    void eligeYModificaLosDiasDisponiblesDeUnSocio() throws Exception {
+        mockMvc.perform(post("/socios")
+                        .param("nombre", "Lucia").param("apellido", "Gomez").param("dni", "30111222")
+                        .param("direccion", "Calle 9").param("telefono", "1155555555")
+                        .param("cbu", "1234567890123456789012")
+                        .param("estado", "DISPONIBLE_REEMPLAZO").param("especialidad", "CUIDADOR")
+                        .param("diasDisponibles", "MONDAY", "TUESDAY"))
+                .andExpect(redirectedUrl("/socios"));
+        Socio socio = socioRepository.findAll().get(0);
+        org.junit.jupiter.api.Assertions.assertEquals(
+                java.util.Set.of(java.time.DayOfWeek.MONDAY, java.time.DayOfWeek.TUESDAY),
+                socio.getDiasDisponibles());
+
+        mockMvc.perform(post("/socios/" + socio.getId())
+                        .param("nombre", "Lucia").param("apellido", "Gomez").param("dni", "30111222")
+                        .param("direccion", "Calle 9").param("telefono", "1155555555")
+                        .param("cbu", "1234567890123456789012")
+                        .param("estado", "DISPONIBLE_REEMPLAZO").param("especialidad", "CUIDADOR")
+                        .param("diasDisponibles", "SATURDAY"))
+                .andExpect(redirectedUrl("/socios"));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                java.util.Set.of(java.time.DayOfWeek.SATURDAY),
+                socioRepository.findById(socio.getId()).orElseThrow().getDiasDisponibles());
+
+        mockMvc.perform(post("/socios/" + socio.getId())
+                        .param("nombre", "Lucia").param("apellido", "Gomez").param("dni", "30111222")
+                        .param("direccion", "Calle 9").param("telefono", "1155555555")
+                        .param("cbu", "1234567890123456789012")
+                        .param("estado", "DISPONIBLE_REEMPLAZO").param("especialidad", "CUIDADOR")
+                        .param("_diasDisponibles", "on"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("al menos un día")));
+    }
+
+    @Test
+    void soloOfreceYAsignaSociosEnSusDiasDisponibles() throws Exception {
+        Socio lunes = crearSocio("11111111", EstadoSocio.DISPONIBLE_REEMPLAZO);
+        lunes.setDiasDisponibles(java.util.Set.of(java.time.DayOfWeek.MONDAY));
+        lunes = socioRepository.save(lunes);
+        socioRepository.save(crearSocio("22222222", EstadoSocio.DISPONIBLE_REEMPLAZO));
+        ServicioDomicilio servicio = servicioRepository.save(crearServicio());
+
+        // 2026-10-06 es martes
+        mockMvc.perform(get("/asignaciones/nueva")
+                        .param("fecha", "2026-10-06").param("horaInicio", "08:00").param("horaFin", "12:00"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("DNI 22222222")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("DNI 11111111"))));
+
+        mockMvc.perform(post("/asignaciones")
+                        .param("socioId", lunes.getId().toString())
+                        .param("clienteId", clientePorDefecto().getId().toString())
+                        .param("servicioDomicilioId", servicio.getId().toString())
+                        .param("fecha", "2026-10-06").param("horaInicio", "08:00").param("horaFin", "12:00"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("martes")));
+        org.junit.jupiter.api.Assertions.assertEquals(0, asistenciaRepository.count());
     }
 
     @Test

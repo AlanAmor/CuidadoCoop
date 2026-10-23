@@ -1,18 +1,27 @@
 package com.cooperativa.cuidado.socio;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
+
+import java.time.DayOfWeek;
+import java.util.EnumSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "socios")
@@ -67,7 +76,34 @@ public class Socio {
     @Column(nullable = false, length = 20)
     private Especialidad especialidad;
 
+    @NotEmpty(message = "Seleccioná al menos un día de la semana en el que el socio pueda trabajar")
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "socio_dias_disponibles", joinColumns = @JoinColumn(name = "socio_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dia", nullable = false, length = 12)
+    private Set<DayOfWeek> diasDisponibles = EnumSet.allOf(DayOfWeek.class);
+
     public Socio() {
+    }
+
+    public Set<DayOfWeek> getDiasDisponibles() {
+        return diasDisponibles;
+    }
+
+    public void setDiasDisponibles(Set<DayOfWeek> dias) {
+        Set<DayOfWeek> copia = dias == null || dias.isEmpty()
+                ? EnumSet.noneOf(DayOfWeek.class)
+                : EnumSet.copyOf(dias);
+        if (diasDisponibles == null) {
+            diasDisponibles = copia;
+            return;
+        }
+        diasDisponibles.clear();
+        diasDisponibles.addAll(copia);
+    }
+
+    public boolean trabajaEl(DayOfWeek dia) {
+        return diasDisponibles.contains(dia);
     }
 
     public Long getId() {

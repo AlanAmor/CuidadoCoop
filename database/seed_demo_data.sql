@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 USE cooperativa_db;
 
 START TRANSACTION;
@@ -24,6 +25,16 @@ ON DUPLICATE KEY UPDATE
     correo = nuevo_socio.correo,
     estado = nuevo_socio.estado,
     especialidad = nuevo_socio.especialidad;
+
+INSERT IGNORE INTO socio_dias_disponibles (socio_id, dia)
+SELECT socio.id, dias.dia
+FROM socios socio
+CROSS JOIN (
+    SELECT 'MONDAY' dia UNION ALL SELECT 'TUESDAY' UNION ALL SELECT 'WEDNESDAY'
+    UNION ALL SELECT 'THURSDAY' UNION ALL SELECT 'FRIDAY' UNION ALL SELECT 'SATURDAY'
+    UNION ALL SELECT 'SUNDAY'
+) dias
+WHERE socio.dni BETWEEN '20900001' AND '20900010';
 
 INSERT INTO clientes (
     nombre_familiar, telefono, correo, nombre_paciente, domicilio, observacion_medica

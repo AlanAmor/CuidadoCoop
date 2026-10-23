@@ -70,6 +70,7 @@ public class SocioService {
         socio.setCbu(datos.getCbu());
         socio.setEstado(datos.getEstado());
         socio.setEspecialidad(datos.getEspecialidad());
+        socio.setDiasDisponibles(datos.getDiasDisponibles());
         return socioRepository.save(socio);
     }
 

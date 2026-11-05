@@ -51,6 +51,8 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
 
     long deleteAllBySocioId(Long socioId);
 
+    boolean existsBySocioId(Long socioId);
+
     long deleteAllByServicioDomicilioId(Long servicioId);
 
     long deleteAllByClienteId(Long clienteId);

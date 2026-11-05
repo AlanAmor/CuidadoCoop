@@ -1,5 +1,6 @@
 package com.cooperativa.cuidado.web.error;
 
+import com.cooperativa.cuidado.exception.AccesoDenegadoException;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoDuplicadoException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
@@ -11,7 +12,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -34,6 +34,11 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ModelAndView manejarAccesoDenegado(AccesoDenegadoException excepcion) {
+        return vistaError(HttpStatus.FORBIDDEN, "Acceso no permitido", excepcion.getMessage());
+    }
 
     @ExceptionHandler({
             MethodArgumentNotValidException.class,

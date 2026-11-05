@@ -5,6 +5,8 @@ import com.cooperativa.cuidado.exception.RecursoDuplicadoException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
 import com.cooperativa.cuidado.legajo.TipoLegajo;
 import com.cooperativa.cuidado.legajo.service.LegajoService;
+import com.cooperativa.cuidado.recibo.ReciboRetribucionRepository;
+import com.cooperativa.cuidado.retencion.RetencionSocioRepository;
 import com.cooperativa.cuidado.socio.EstadoSocio;
 import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.socio.SocioRepository;
@@ -25,14 +27,20 @@ public class SocioService {
     private final SocioRepository socioRepository;
     private final AsistenciaRepository asistenciaRepository;
     private final LegajoService legajoService;
+    private final RetencionSocioRepository retencionSocioRepository;
+    private final ReciboRetribucionRepository reciboRetribucionRepository;
 
     public SocioService(
             SocioRepository socioRepository,
             AsistenciaRepository asistenciaRepository,
-            LegajoService legajoService) {
+            LegajoService legajoService,
+            RetencionSocioRepository retencionSocioRepository,
+            ReciboRetribucionRepository reciboRetribucionRepository) {
         this.socioRepository = socioRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.legajoService = legajoService;
+        this.retencionSocioRepository = retencionSocioRepository;
+        this.reciboRetribucionRepository = reciboRetribucionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -43,6 +51,10 @@ public class SocioService {
     @Transactional
     public void eliminar(Long id) {
         Socio socio = obtenerEntidad(id);
+        reciboRetribucionRepository.deleteAllBySocioId(id);
+        reciboRetribucionRepository.flush();
+        retencionSocioRepository.deleteAllBySocioId(id);
+        retencionSocioRepository.flush();
         asistenciaRepository.deleteAllBySocioId(id);
         asistenciaRepository.flush();
         legajoService.eliminarLegajo(TipoLegajo.SOCIO, id);
@@ -64,7 +76,10 @@ public class SocioService {
         socio.setNombre(datos.getNombre());
         socio.setApellido(datos.getApellido());
         socio.setDni(datos.getDni());
+        socio.setCuil(datos.getCuil());
         socio.setDireccion(datos.getDireccion());
+        socio.setLocalidad(datos.getLocalidad());
+        socio.setCodigoPostal(datos.getCodigoPostal());
         socio.setTelefono(datos.getTelefono());
         socio.setCorreo(datos.getCorreo());
         socio.setCbu(datos.getCbu());

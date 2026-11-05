@@ -15,7 +15,8 @@
             <h1>Socios</h1>
             <p class="muted">Alta, edición y baja de cuidadores y enfermeros.</p>
         </div>
-        <a class="button button-primary" th:href="@{/socios/nuevo}">Nuevo socio</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS')}"
+           class="button button-primary" th:href="@{/socios/nuevo}">Nuevo socio</a>
     </section>
     <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
     <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
@@ -28,8 +29,17 @@
                 <tbody>
                 <tr th:each="socio : ${socios}">
                     <td th:text="|${socio.apellido}, ${socio.nombre}|"></td>
-                    <td th:text="${socio.dni}"></td>
-                    <td th:text="|${socio.telefono} · ${socio.correo}|"></td>
+                    <td>
+                        <span th:text="${socio.dni}"></span>
+                        <small class="muted" style="display:block;" th:if="${socio.cuil != null and !socio.cuil.isBlank()}"
+                               th:text="|CUIL ${socio.cuil}|"></small>
+                    </td>
+                    <td>
+                        <span th:text="|${socio.telefono}${socio.correo != null ? ' · ' + socio.correo : ''}|"></span>
+                        <small class="muted" style="display:block;"
+                               th:if="${socio.localidad != null or socio.codigoPostal != null}"
+                               th:text="|${socio.localidad != null ? socio.localidad : ''}${socio.codigoPostal != null ? ' (CP ' + socio.codigoPostal + ')' : ''}|"></small>
+                    </td>
                     <td th:text="${socio.especialidad.etiqueta}"></td>
                     <td>
                         <span class="badge" th:each="d : ${T(java.time.DayOfWeek).values()}"
@@ -38,16 +48,21 @@
                     </td>
                     <td><span class="badge" th:text="${socio.estado.etiqueta}"></span></td>
                     <td class="row-actions">
-                        <a class="button button-secondary" th:href="@{/socios/{id}/editar(id=${socio.id})}">Editar</a>
-                        <form method="post" th:action="@{/socios/{id}/eliminar(id=${socio.id})}"
+                        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS')}"
+                           class="button button-secondary" th:href="@{/socios/{id}/editar(id=${socio.id})}">Editar</a>
+                        <form th:if="${@seguridad.tienePermiso(usuarioActual, 'ELIMINAR_SOCIOS')}"
+                              method="post" th:action="@{/socios/{id}/eliminar(id=${socio.id})}"
                               data-confirm="¿Eliminar este socio? También se borrarán todos sus turnos registrados.">
                             <button class="button button-danger" type="submit">Eliminar</button>
                         </form>
-                        <button class="button button-secondary" type="button" data-legajo-tipo="socios"
+                        <button th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_LEGAJOS')}"
+                                class="button button-secondary" type="button" data-legajo-tipo="socios"
                                 th:attr="data-legajo-id=${socio.id},data-legajo-titulo=|${socio.apellido}, ${socio.nombre}|">Legajo</button>
-                        <a class="button button-secondary" th:href="@{/socios/{id}/historico/pdf(id=${socio.id})}"
+                        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}"
+                           class="button button-secondary" th:href="@{/socios/{id}/historico/pdf(id=${socio.id})}"
                            title="Histórico completo de asistencias en PDF">Histórico PDF</a>
-                        <a class="button button-secondary" th:href="@{/socios/{id}/historico/excel(id=${socio.id})}"
+                        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}"
+                           class="button button-secondary" th:href="@{/socios/{id}/historico/excel(id=${socio.id})}"
                            title="Histórico completo de asistencias en Excel">Excel</a>
                     </td>
                 </tr>

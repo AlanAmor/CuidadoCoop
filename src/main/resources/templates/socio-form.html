@@ -27,15 +27,34 @@
             <input id="apellido" type="text" th:field="*{apellido}">
             <small class="field-error" th:errors="*{apellido}"></small>
         </div>
-        <div class="field field-spaced">
-            <label for="dni">DNI (solo números)</label>
-            <input id="dni" type="text" th:field="*{dni}" inputmode="numeric">
-            <small class="field-error" th:errors="*{dni}"></small>
+        <div class="form-grid">
+            <div class="field">
+                <label for="dni">DNI (solo números)</label>
+                <input id="dni" type="text" th:field="*{dni}" inputmode="numeric">
+                <small class="field-error" th:errors="*{dni}"></small>
+            </div>
+            <div class="field">
+                <label for="cuil">CUIL</label>
+                <input id="cuil" type="text" th:field="*{cuil}" placeholder="Ej. 20-30961836-3">
+                <small class="field-error" th:errors="*{cuil}"></small>
+            </div>
         </div>
         <div class="field field-spaced">
-            <label for="direccion">Dirección</label>
+            <label for="direccion">Dirección / Domicilio</label>
             <input id="direccion" type="text" th:field="*{direccion}">
             <small class="field-error" th:errors="*{direccion}"></small>
+        </div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="localidad">Localidad</label>
+                <input id="localidad" type="text" th:field="*{localidad}" placeholder="Ej. Santa Fe Capital">
+                <small class="field-error" th:errors="*{localidad}"></small>
+            </div>
+            <div class="field">
+                <label for="codigoPostal">Código postal (CP)</label>
+                <input id="codigoPostal" type="text" th:field="*{codigoPostal}" placeholder="Ej. 3000">
+                <small class="field-error" th:errors="*{codigoPostal}"></small>
+            </div>
         </div>
         <div class="field field-spaced">
             <label for="telefono">Teléfono</label>

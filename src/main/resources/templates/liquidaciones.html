@@ -3,63 +3,505 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Retornos mensuales | CuidadoCoop</title>
+    <title>Recibo de Retribución · Retornos mensuales | CuidadoCoop</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        .coop-header-box {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            padding: 16px 18px;
+            background: #f6f9ff;
+            border: 1px solid #cddbf5;
+            border-radius: 10px;
+            margin-bottom: 18px;
+        }
+        .coop-header-box h3 {
+            margin: 0 0 6px 0;
+            font-size: 1.02rem;
+            color: #1f3b70;
+        }
+        .coop-meta-line {
+            margin: 2px 0;
+            font-size: 0.9rem;
+            color: #2d3748;
+        }
+        .recibo-num-box {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            min-width: 210px;
+            background: #ffffff;
+            border: 1px solid #b8ccf0;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .recibo-num-badge {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #1e4ea8;
+            letter-spacing: 0.03em;
+        }
+        .socio-auto-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 10px;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        .socio-auto-item span {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 700;
+        }
+        .socio-auto-item strong {
+            font-size: 0.94rem;
+            color: #0f172a;
+        }
+        .section-banner {
+            background: #4a86e8;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.88rem;
+            letter-spacing: 0.03em;
+            padding: 7px 12px;
+            border-radius: 6px;
+            margin: 18px 0 10px 0;
+            text-transform: uppercase;
+        }
+        .cuidados-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .cuidados-preview-table th,
+        .cuidados-preview-table td {
+            border: 1px solid #cbd5e1;
+            padding: 7px 10px;
+        }
+        .cuidados-preview-table thead th {
+            background: #e2e8f0;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        .num-cell {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .optional-block {
+            border: 1px solid #dbe3ee;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-top: 10px;
+            background: #fcfdff;
+        }
+        .otras-ret-row {
+            display: grid;
+            grid-template-columns: 2.2fr 0.8fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            margin-top: 8px;
+        }
+        .neto-summary-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            background: #eff5ff;
+            border: 2px solid #4a86e8;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 18px;
+        }
+        .neto-summary-item span {
+            display: block;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #334155;
+        }
+        .neto-summary-item strong {
+            font-size: 1.15rem;
+            color: #0f172a;
+        }
+        .neto-highlight strong {
+            font-size: 1.35rem;
+            color: #1d4ed8;
+        }
+        @media (max-width: 760px) {
+            .coop-header-box {
+                grid-template-columns: 1fr;
+            }
+            .otras-ret-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
 <main class="container">
     <section class="page-heading">
         <div>
-            <p class="eyebrow">MÓDULO FINANCIERO</p>
-            <h1>Retornos mensuales</h1>
-            <p class="muted">Consultá el resumen por socio y período.</p>
+            <p class="eyebrow">MÓDULO FINANCIERO · RETORNOS MENSUALES</p>
+            <h1>Recibo de Retribución / Anticipo de Retornos / Retenciones</h1>
+            <p class="muted">Emití recibos numerados con el formato oficial de Cooperativa de Trabajo Grupo Azul Limitada y descargalos en PDF o Excel.</p>
+        </div>
+        <a class="button button-secondary" th:href="@{/retenciones}">Gestionar Retenciones</a>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" role="status">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+            <span th:text="${mensajeExito}">Recibo emitido</span>
+            <span th:if="${reciboRecienEmitido != null}" style="display:flex; gap:8px;">
+                <a class="button button-primary button-sm"
+                   th:href="@{/liquidaciones/recibos/{id}/pdf(id=${reciboRecienEmitido.id})}">
+                    Descargar PDF (<span th:text="${reciboRecienEmitido.numeroFormateado}"></span>)
+                </a>
+                <a class="button button-secondary button-sm"
+                   th:href="@{/liquidaciones/recibos/{id}/excel(id=${reciboRecienEmitido.id})}">
+                    Descargar Excel (.xlsx)
+                </a>
+            </span>
+        </div>
+    </div>
+    <div class="alert alert-error" th:if="${errorConsulta}" th:text="${errorConsulta}" role="alert"></div>
+
+    <form class="content-card form-card" method="post" th:action="@{/liquidaciones/recibos}" id="form-recibo">
+        <div class="coop-header-box">
+            <div>
+                <h3>COOPERATIVA DE TRABAJO GRUPO AZUL LIMITADA.</h3>
+                <p class="coop-meta-line"><strong>CUIT:</strong> 30-71745352-9</p>
+                <p class="coop-meta-line"><strong>MATRÍCULAS:</strong> Nacional N° 60848 / Provincial N° 4124</p>
+                <p class="coop-meta-line"><strong>DOMICILIO:</strong> Amenabar 3427. CP 3000. Santa Fe Capital. Provincia de Santa Fé</p>
+            </div>
+            <div class="recibo-num-box">
+                <span class="eyebrow" style="margin:0;">RECIBO DE RETRIBUCIÓN</span>
+                <span class="recibo-num-badge" id="lbl-proximo-numero" th:text="${proximoNumeroFormateado}">N° 00001</span>
+                <small class="muted">Numeración correlativa automática (+1)</small>
+            </div>
+        </div>
+
+        <div class="section-banner">Datos del Socio y Período</div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="recibo-socioId">Socio</label>
+                <select id="recibo-socioId" name="socioId" required>
+                    <option value="">Seleccioná un socio</option>
+                    <option th:each="socio : ${socios}"
+                            th:value="${socio.id}"
+                            th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="recibo-mes">Mes de referencia</label>
+                <input id="recibo-mes" name="mesSeleccionado" type="month" th:value="${periodoActual}" required>
+            </div>
+            <div class="field">
+                <label for="recibo-fechaEmision">Fecha del recibo</label>
+                <input id="recibo-fechaEmision" name="fechaEmision" type="date" th:value="${hoy}" required>
+            </div>
+        </div>
+
+        <div class="form-grid" style="margin-top: 12px;">
+            <div class="field">
+                <label for="recibo-periodoDesde">Período desde</label>
+                <input id="recibo-periodoDesde" name="periodoDesde" type="date" th:value="${inicioMesActual}" required>
+            </div>
+            <div class="field">
+                <label for="recibo-periodoHasta">Período hasta</label>
+                <input id="recibo-periodoHasta" name="periodoHasta" type="date" th:value="${finMesActual}" required>
+            </div>
+            <div class="field">
+                <label for="recibo-fechaPago">Fecha de pago</label>
+                <input id="recibo-fechaPago" name="fechaPago" type="date" th:value="${hoy}" required>
+            </div>
+            <div class="field">
+                <label for="recibo-comprobante">Comprobante transferencia N°</label>
+                <input id="recibo-comprobante" name="comprobanteTransferencia" type="text" maxlength="100"
+                       placeholder="Ej: 004918273 o -" value="-">
+            </div>
+        </div>
+
+        <div class="socio-auto-grid" id="socio-auto-box">
+            <div class="socio-auto-item">
+                <span>Nombre y Apellido</span>
+                <strong id="auto-nombre">Seleccioná un socio</strong>
+            </div>
+            <div class="socio-auto-item">
+                <span>CUIL / DNI</span>
+                <strong id="auto-cuil">-</strong>
+            </div>
+            <div class="socio-auto-item">
+                <span>Domicilio</span>
+                <strong id="auto-domicilio">-</strong>
+            </div>
+            <div class="socio-auto-item">
+                <span>Localidad y CP</span>
+                <strong id="auto-localidad-cp">-</strong>
+            </div>
+            <div class="socio-auto-item">
+                <span>CBU / CVU</span>
+                <strong id="auto-cbu">-</strong>
+            </div>
+        </div>
+
+        <div class="section-banner">Datos de la Retribución / Anticipo de Retornos</div>
+        <div class="table-wrap">
+            <table class="cuidados-preview-table">
+                <thead>
+                <tr>
+                    <th>CONCEPTOS</th>
+                    <th>DETALLE</th>
+                    <th>HORAS</th>
+                    <th>SANATORIO</th>
+                    <th>VIÁTICOS</th>
+                    <th>TOTAL DE HORAS y RETRIBUCION</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td rowspan="3" style="font-weight:700; text-align:center;">CUIDADOS DOMICILIARIOS</td>
+                    <td><strong>UNIDAD / HORAS</strong></td>
+                    <td class="num-cell" id="c-horas">0</td>
+                    <td class="num-cell" id="c-san-uni">0</td>
+                    <td class="num-cell" id="c-via-uni">0</td>
+                    <td class="num-cell"><strong id="c-tot-horas">0</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>VALOR</strong></td>
+                    <td class="num-cell" id="c-valor-hora">$ 0,00</td>
+                    <td class="num-cell" id="c-san-val">$ 0,00</td>
+                    <td class="num-cell" id="c-via-val">$ 0,00</td>
+                    <td style="text-align:center;">-</td>
+                </tr>
+                <tr>
+                    <td><strong>SUBTOTALES</strong></td>
+                    <td class="num-cell" id="c-sub-horas">$ 0,00</td>
+                    <td class="num-cell" id="c-san-sub">$ 0,00</td>
+                    <td class="num-cell" id="c-via-sub">$ 0,00</td>
+                    <td class="num-cell"><strong id="c-sub-cuidados">$ 0,00</strong></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="optional-block">
+            <label class="check-inline">
+                <input type="checkbox" id="chk-otros-conceptos" name="incluirOtrosConceptos" value="true">
+                <strong>Modificar "Otros Conceptos"</strong>
+                <span class="muted">(si no se marca, queda "-" y $ 0,00 como en la planilla)</span>
+            </label>
+            <div class="form-grid" id="box-otros-conceptos" style="margin-top:10px;" hidden>
+                <div class="field">
+                    <label for="otrosConcepto">Concepto</label>
+                    <input id="otrosConcepto" name="otrosConcepto" type="text" value="-">
+                </div>
+                <div class="field">
+                    <label for="otrosDetalle">Detalle</label>
+                    <input id="otrosDetalle" name="otrosDetalle" type="text" value="-">
+                </div>
+                <div class="field">
+                    <label for="totalOtrosConceptos">Total otros conceptos ($)</label>
+                    <input id="totalOtrosConceptos" name="totalOtrosConceptos" type="number" step="0.01" min="0" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="section-banner">Datos de Retiro de Excedentes</div>
+        <div class="optional-block">
+            <label class="check-inline">
+                <input type="checkbox" id="chk-excedente" name="incluirExcedenteAnual" value="true">
+                <strong>Incluir Retiro de Excedente Anual</strong>
+                <span class="muted">(Adelanto Excedente Anual por Asociado Cooperativo · por defecto Unidad: 1, Valor: $ 0,00, Total: $ 0,00)</span>
+            </label>
+            <div class="form-grid" id="box-excedente" style="margin-top:10px;" hidden>
+                <div class="field">
+                    <label for="excedenteUnidad">Unidad</label>
+                    <input id="excedenteUnidad" name="excedenteUnidad" type="number" step="0.01" min="0.01" value="1">
+                </div>
+                <div class="field">
+                    <label for="excedenteValorUnidad">Valor unidad ($)</label>
+                    <input id="excedenteValorUnidad" name="excedenteValorUnidad" type="number" step="0.01" min="0" value="0">
+                </div>
+                <div class="field">
+                    <label for="totalExcedente">Total excedente ($)</label>
+                    <input id="totalExcedente" name="totalExcedente" type="number" step="0.01" min="0" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="section-banner">Retenciones</div>
+        <p class="form-hint" id="retenciones-aviso" style="margin-bottom:8px;">
+            Si el socio tiene retenciones registradas para el mes seleccionado en el apartado Retenciones, se cargan acá automáticamente. Lo que no modifiques se mantiene igual que en la planilla oficial.
+        </p>
+
+        <div class="optional-block">
+            <label class="check-inline">
+                <input type="checkbox" id="chk-monotributo" name="incluirMonotributo" value="true">
+                <strong>RETENCION MONOTRIBUTO</strong>
+                <span class="muted">(por defecto: Retencion Pago Monotributo · $ 0,00)</span>
+            </label>
+            <div class="form-grid" id="box-monotributo" style="margin-top:10px;" hidden>
+                <div class="field">
+                    <label for="monotributoDetalle">Detalle</label>
+                    <input id="monotributoDetalle" name="monotributoDetalle" type="text" value="Retencion Pago Monotributo">
+                </div>
+                <div class="field">
+                    <label for="monotributoUnidad">Unidad</label>
+                    <input id="monotributoUnidad" name="monotributoUnidad" type="number" step="0.01" min="0.01" value="1">
+                </div>
+                <div class="field">
+                    <label for="monotributoValorUnidad">Valor unidad ($)</label>
+                    <input id="monotributoValorUnidad" name="monotributoValorUnidad" type="number" step="0.01" min="0" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="optional-block">
+            <label class="check-inline">
+                <input type="checkbox" id="chk-prestamo" name="incluirPrestamo" value="true">
+                <strong>PRÉSTAMO COOPERATIVA</strong>
+                <span class="muted">(por defecto: Prestamo Personal Asociado · $ 0,00)</span>
+            </label>
+            <div class="form-grid" id="box-prestamo" style="margin-top:10px;" hidden>
+                <div class="field">
+                    <label for="prestamoDetalle">Detalle</label>
+                    <input id="prestamoDetalle" name="prestamoDetalle" type="text" value="Prestamo Personal Asociado">
+                </div>
+                <div class="field">
+                    <label for="prestamoUnidad">Unidad</label>
+                    <input id="prestamoUnidad" name="prestamoUnidad" type="number" step="0.01" min="0.01" value="1">
+                </div>
+                <div class="field">
+                    <label for="prestamoValorUnidad">Valor unidad ($)</label>
+                    <input id="prestamoValorUnidad" name="prestamoValorUnidad" type="number" step="0.01" min="0" value="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="optional-block">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <label class="check-inline">
+                    <input type="checkbox" id="chk-otras-ret" name="incluirOtrasRetenciones" value="true">
+                    <strong>OTRAS RETENCIONES:</strong>
+                    <span class="muted">(podés agregar una o varias filas con su motivo)</span>
+                </label>
+                <button type="button" class="button button-secondary button-sm" id="btn-agregar-otra-ret" hidden>
+                    + Agregar otra retención
+                </button>
+            </div>
+            <div id="box-otras-ret" style="margin-top:10px;" hidden>
+                <div id="lista-otras-ret"></div>
+            </div>
+        </div>
+
+        <div class="neto-summary-bar">
+            <div class="neto-summary-item">
+                <span>Total de la Retribución</span>
+                <strong id="res-total-retrib">$ 0,00</strong>
+            </div>
+            <div class="neto-summary-item">
+                <span>Total Excedente</span>
+                <strong id="res-total-exc">$ 0,00</strong>
+            </div>
+            <div class="neto-summary-item">
+                <span>Total de Retenciones</span>
+                <strong id="res-total-retenc">$ 0,00</strong>
+            </div>
+            <div class="neto-summary-item neto-highlight">
+                <span>Retribución Neta a Pagar</span>
+                <strong id="res-neto">$ 0,00</strong>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:18px;">
+            <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(socios)}">
+                Emitir Recibo de Retribución
+            </button>
+        </div>
+    </form>
+
+    <section class="content-card table-card" style="margin-top: 24px;">
+        <h3>Recibos de Retribución emitidos</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>N° Recibo</th>
+                    <th>Fecha</th>
+                    <th>Socio</th>
+                    <th>Período</th>
+                    <th>Total Retribución</th>
+                    <th>Retenciones</th>
+                    <th>Retribución Neta</th>
+                    <th>Descargar</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${recibosEmitidos}">
+                    <td><strong th:text="${r.numeroFormateado}">N° 00001</strong></td>
+                    <td th:text="${r.fechaEmision}">2026-04-30</td>
+                    <td th:text="${r.nombreApellidoSocio}">SOCIO</td>
+                    <td th:text="${r.periodoTexto}">01/04/2026 al 30/04/2026</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(r.totalRetribucion, 1, 2)}|">$ 0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(r.totalRetenciones, 1, 2)}|">$ 0,00</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(r.retribucionNeta, 1, 2)}|">$ 0,00</strong></td>
+                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <a class="button button-primary button-sm"
+                           th:href="@{/liquidaciones/recibos/{id}/pdf(id=${r.id})}">PDF</a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/liquidaciones/recibos/{id}/excel(id=${r.id})}">Excel</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(recibosEmitidos)}">
+                    <td colspan="8" class="empty-state">Todavía no se emitieron recibos de retribución.</td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </section>
 
-    <div class="alert alert-error" th:if="${errorConsulta}" th:text="${errorConsulta}" role="alert"></div>
-
-    <form class="content-card filter-card" method="get" th:action="@{/liquidaciones/resultado}">
-        <div class="field">
-            <label for="socioId">Socio</label>
-            <select id="socioId" name="socioId" required>
-                <option value="">Seleccioná un socio</option>
-                <option th:each="socio : ${socios}"
-                        th:value="${socio.id}"
-                        th:selected="${liquidacion != null and liquidacion.socioId == socio.id}"
-                        th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
-            </select>
-        </div>
-        <div class="field">
-            <label for="periodo">Período</label>
-            <input id="periodo" name="periodo" type="month" th:value="${periodoActual}" required>
-        </div>
-        <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(socios)}">
-            Consultar retorno
-        </button>
-    </form>
-
-    <section class="result-section" th:if="${liquidacion != null}">
-        <div class="page-heading result-heading">
-            <div>
-                <p class="eyebrow">RESULTADO</p>
-                <h2 th:text="${liquidacion.nombreSocio}">Socio</h2>
-                <p class="muted" th:text="${liquidacion.periodo}">Período</p>
+    <details class="content-card" style="margin-top: 24px; padding: 16px;" th:open="${liquidacion != null}">
+        <summary style="cursor:pointer; font-weight:700;">Consulta rápida de retornos mensuales por domicilio</summary>
+        <form class="filter-card" method="get" th:action="@{/liquidaciones/resultado}" style="margin-top: 14px;">
+            <div class="field">
+                <label for="socioId">Socio</label>
+                <select id="socioId" name="socioId" required>
+                    <option value="">Seleccioná un socio</option>
+                    <option th:each="socio : ${socios}"
+                            th:value="${socio.id}"
+                            th:selected="${liquidacion != null and liquidacion.socioId == socio.id}"
+                            th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
+                </select>
             </div>
-            <div class="total-box">
-                <span>Total retorno</span>
-                <strong th:text="|$ ${#numbers.formatDecimal(liquidacion.totalRetorno, 1, 2)}|">$ 0,00</strong>
+            <div class="field">
+                <label for="periodo">Período</label>
+                <input id="periodo" name="periodo" type="month" th:value="${periodoActual}" required>
             </div>
-        </div>
-        <div class="metrics compact-metrics">
-            <article class="metric-card">
-                <span class="metric-label">Horas del período</span>
-                <strong class="metric-value" th:text="${#numbers.formatDecimal(liquidacion.totalHoras, 1, 2)}">0,00</strong>
-            </article>
-        </div>
+            <button class="button button-secondary" type="submit" th:disabled="${#lists.isEmpty(socios)}">
+                Consultar retorno
+            </button>
+        </form>
 
-        <div class="content-card table-card">
-            <h3>Detalle por domicilio</h3>
+        <section class="result-section" th:if="${liquidacion != null}" style="margin-top:16px;">
+            <div class="page-heading result-heading">
+                <div>
+                    <p class="eyebrow">RESULTADO</p>
+                    <h2 th:text="${liquidacion.nombreSocio}">Socio</h2>
+                    <p class="muted" th:text="${liquidacion.periodo}">Período</p>
+                </div>
+                <div class="total-box">
+                    <span>Total retorno</span>
+                    <strong th:text="|$ ${#numbers.formatDecimal(liquidacion.totalRetorno, 1, 2)}|">$ 0,00</strong>
+                </div>
+            </div>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -83,12 +525,307 @@
                     </tbody>
                 </table>
             </div>
-            <a class="button button-secondary export-button"
+            <a class="button button-quiet export-button"
                th:href="@{/liquidaciones/{socioId}/{periodo}/pdf(socioId=${liquidacion.socioId},periodo=${liquidacion.periodo})}">
-                Descargar comprobante PDF
+                Descargar resumen simple PDF
             </a>
-        </div>
-    </section>
+        </section>
+    </details>
 </main>
+<script>
+(() => {
+    const socioSel = document.getElementById("recibo-socioId");
+    const mesInp = document.getElementById("recibo-mes");
+    const desdeInp = document.getElementById("recibo-periodoDesde");
+    const hastaInp = document.getElementById("recibo-periodoHasta");
+
+    const chkOtros = document.getElementById("chk-otros-conceptos");
+    const boxOtros = document.getElementById("box-otros-conceptos");
+    const totOtrosInp = document.getElementById("totalOtrosConceptos");
+
+    const chkExc = document.getElementById("chk-excedente");
+    const boxExc = document.getElementById("box-excedente");
+    const excUniInp = document.getElementById("excedenteUnidad");
+    const excValInp = document.getElementById("excedenteValorUnidad");
+    const excTotInp = document.getElementById("totalExcedente");
+
+    const chkMono = document.getElementById("chk-monotributo");
+    const boxMono = document.getElementById("box-monotributo");
+    const monoDetInp = document.getElementById("monotributoDetalle");
+    const monoUniInp = document.getElementById("monotributoUnidad");
+    const monoValInp = document.getElementById("monotributoValorUnidad");
+
+    const chkPres = document.getElementById("chk-prestamo");
+    const boxPres = document.getElementById("box-prestamo");
+    const presDetInp = document.getElementById("prestamoDetalle");
+    const presUniInp = document.getElementById("prestamoUnidad");
+    const presValInp = document.getElementById("prestamoValorUnidad");
+
+    const chkOtrasRet = document.getElementById("chk-otras-ret");
+    const boxOtrasRet = document.getElementById("box-otras-ret");
+    const btnAddOtraRet = document.getElementById("btn-agregar-otra-ret");
+    const listaOtrasRet = document.getElementById("lista-otras-ret");
+    const avisoRet = document.getElementById("retenciones-aviso");
+
+    let subtotalCuidadosActual = 0;
+
+    function fmtMoney(v) {
+        return "$ " + Number(v || 0).toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function fmtQty(v) {
+        const n = Number(v || 0);
+        return Number.isInteger(n) ? String(n) : n.toLocaleString("es-AR", {maximumFractionDigits: 2});
+    }
+
+    function bindCheckBox(chk, box) {
+        chk.addEventListener("change", () => {
+            box.hidden = !chk.checked;
+            recalcularTotales();
+        });
+    }
+    bindCheckBox(chkOtros, boxOtros);
+    bindCheckBox(chkExc, boxExc);
+    bindCheckBox(chkMono, boxMono);
+    bindCheckBox(chkPres, boxPres);
+
+    chkOtrasRet.addEventListener("change", () => {
+        boxOtrasRet.hidden = !chkOtrasRet.checked;
+        btnAddOtraRet.hidden = !chkOtrasRet.checked;
+        if (chkOtrasRet.checked && listaOtrasRet.children.length === 0) {
+            agregarFilaOtraRetencion("Retención por Incumplimiento Articulo 5 Reglamento Interno", 1, 0);
+        }
+        recalcularTotales();
+    });
+
+    btnAddOtraRet.addEventListener("click", () => {
+        agregarFilaOtraRetencion("Retención por Incumplimiento Articulo 5 Reglamento Interno", 1, 0);
+        recalcularTotales();
+    });
+
+    function agregarFilaOtraRetencion(detalle, unidad, valorUnidad) {
+        const row = document.createElement("div");
+        row.className = "otras-ret-row";
+
+        const fDet = document.createElement("div");
+        fDet.className = "field";
+        fDet.innerHTML = `<label>Motivo / Detalle</label>`;
+        const iDet = document.createElement("input");
+        iDet.type = "text";
+        iDet.name = "otrasRetencionesDetalle";
+        iDet.value = detalle || "Retención por Incumplimiento Articulo 5 Reglamento Interno";
+        fDet.appendChild(iDet);
+
+        const fUni = document.createElement("div");
+        fUni.className = "field";
+        fUni.innerHTML = `<label>Unidad</label>`;
+        const iUni = document.createElement("input");
+        iUni.type = "number";
+        iUni.step = "0.01";
+        iUni.min = "0.01";
+        iUni.name = "otrasRetencionesUnidad";
+        iUni.value = unidad !== undefined ? unidad : 1;
+        fUni.appendChild(iUni);
+
+        const fVal = document.createElement("div");
+        fVal.className = "field";
+        fVal.innerHTML = `<label>Valor unidad ($)</label>`;
+        const iVal = document.createElement("input");
+        iVal.type = "number";
+        iVal.step = "0.01";
+        iVal.min = "0";
+        iVal.name = "otrasRetencionesValorUnidad";
+        iVal.value = valorUnidad !== undefined ? valorUnidad : 0;
+        fVal.appendChild(iVal);
+
+        const fSub = document.createElement("div");
+        fSub.className = "field";
+        fSub.innerHTML = `<label>Subtotal</label>`;
+        const iSub = document.createElement("input");
+        iSub.type = "text";
+        iSub.readOnly = true;
+        iSub.value = fmtMoney(Number(iUni.value || 0) * Number(iVal.value || 0));
+        fSub.appendChild(iSub);
+
+        const btnDel = document.createElement("button");
+        btnDel.type = "button";
+        btnDel.className = "button button-danger button-sm";
+        btnDel.textContent = "Quitar";
+        btnDel.addEventListener("click", () => {
+            row.remove();
+            if (listaOtrasRet.children.length === 0) {
+                chkOtrasRet.checked = false;
+                boxOtrasRet.hidden = true;
+                btnAddOtraRet.hidden = true;
+            }
+            recalcularTotales();
+        });
+
+        const syncRow = () => {
+            iSub.value = fmtMoney(Number(iUni.value || 0) * Number(iVal.value || 0));
+            recalcularTotales();
+        };
+        iUni.addEventListener("input", syncRow);
+        iVal.addEventListener("input", syncRow);
+
+        row.append(fDet, fUni, fVal, fSub, btnDel);
+        listaOtrasRet.appendChild(row);
+    }
+
+    [excUniInp, excValInp].forEach(el => el.addEventListener("input", () => {
+        excTotInp.value = (Number(excUniInp.value || 0) * Number(excValInp.value || 0)).toFixed(2);
+        recalcularTotales();
+    }));
+    [totOtrosInp, excTotInp, monoUniInp, monoValInp, presUniInp, presValInp]
+        .forEach(el => el.addEventListener("input", recalcularTotales));
+
+    function recalcularTotales() {
+        const otros = chkOtros.checked ? Number(totOtrosInp.value || 0) : 0;
+        const totRetrib = subtotalCuidadosActual + otros;
+        const totExc = chkExc.checked ? Number(excTotInp.value || 0) : 0;
+
+        let totRetenc = 0;
+        if (chkMono.checked) {
+            totRetenc += Number(monoUniInp.value || 0) * Number(monoValInp.value || 0);
+        }
+        if (chkPres.checked) {
+            totRetenc += Number(presUniInp.value || 0) * Number(presValInp.value || 0);
+        }
+        if (chkOtrasRet.checked) {
+            listaOtrasRet.querySelectorAll(".otras-ret-row").forEach(row => {
+                const u = Number(row.querySelector('[name="otrasRetencionesUnidad"]').value || 0);
+                const v = Number(row.querySelector('[name="otrasRetencionesValorUnidad"]').value || 0);
+                totRetenc += u * v;
+            });
+        }
+
+        const neto = totRetrib + totExc - totRetenc;
+        document.getElementById("res-total-retrib").textContent = fmtMoney(totRetrib);
+        document.getElementById("res-total-exc").textContent = fmtMoney(totExc);
+        document.getElementById("res-total-retenc").textContent = fmtMoney(totRetenc);
+        document.getElementById("res-neto").textContent = fmtMoney(neto);
+    }
+
+    mesInp.addEventListener("change", () => {
+        if (mesInp.value) {
+            const [y, m] = mesInp.value.split("-").map(Number);
+            const first = new Date(y, m - 1, 1);
+            const last = new Date(y, m, 0);
+            const pad = n => String(n).padStart(2, "0");
+            desdeInp.value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`;
+            hastaInp.value = `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`;
+            cargarPrevisualizacion(true);
+        }
+    });
+
+    socioSel.addEventListener("change", () => cargarPrevisualizacion(true));
+    desdeInp.addEventListener("change", () => cargarPrevisualizacion(false));
+    hastaInp.addEventListener("change", () => cargarPrevisualizacion(false));
+
+    function cargarPrevisualizacion(recargarRetenciones) {
+        if (!socioSel.value) {
+            subtotalCuidadosActual = 0;
+            recalcularTotales();
+            return;
+        }
+        const params = new URLSearchParams({
+            socioId: socioSel.value,
+            mes: mesInp.value || "",
+            desde: desdeInp.value || "",
+            hasta: hastaInp.value || ""
+        });
+        fetch(`/api/liquidaciones/previsualizar?${params.toString()}`, {
+            headers: {Accept: "application/json"}
+        })
+            .then(r => r.json().then(body => ({ok: r.ok, body})))
+            .then(({ok, body}) => {
+                if (!ok) return;
+                document.getElementById("lbl-proximo-numero").textContent = body.proximoNumeroFormateado;
+                document.getElementById("auto-nombre").textContent = body.nombreApellidoSocio;
+                document.getElementById("auto-cuil").textContent = body.cuilSocio;
+                document.getElementById("auto-domicilio").textContent = body.domicilioSocio;
+                document.getElementById("auto-localidad-cp").textContent = `${body.localidadSocio} (CP: ${body.cpSocio})`;
+                document.getElementById("auto-cbu").textContent = body.cbuSocio;
+
+                document.getElementById("c-horas").textContent = fmtQty(body.horasCuidados);
+                document.getElementById("c-san-uni").textContent = String(body.unidadesSanatorio);
+                document.getElementById("c-via-uni").textContent = String(body.unidadesViaticos);
+                document.getElementById("c-tot-horas").textContent = fmtQty(body.horasCuidados);
+
+                document.getElementById("c-valor-hora").textContent = fmtMoney(body.valorHoraCuidados);
+                document.getElementById("c-san-val").textContent = fmtMoney(body.valorSanatorio);
+                document.getElementById("c-via-val").textContent = fmtMoney(body.valorViatico);
+
+                document.getElementById("c-sub-horas").textContent = fmtMoney(body.subtotalHoras);
+                document.getElementById("c-san-sub").textContent = fmtMoney(body.subtotalSanatorio);
+                document.getElementById("c-via-sub").textContent = fmtMoney(body.subtotalViaticos);
+                document.getElementById("c-sub-cuidados").textContent = fmtMoney(body.subtotalCuidados);
+
+                subtotalCuidadosActual = Number(body.subtotalCuidados || 0);
+
+                if (recargarRetenciones) {
+                    aplicarRetencionesPrecargadas(body.retencionesPeriodo || []);
+                }
+                recalcularTotales();
+            });
+    }
+
+    function aplicarRetencionesPrecargadas(lista) {
+        chkMono.checked = false;
+        boxMono.hidden = true;
+        monoDetInp.value = "Retencion Pago Monotributo";
+        monoUniInp.value = 1;
+        monoValInp.value = 0;
+
+        chkPres.checked = false;
+        boxPres.hidden = true;
+        presDetInp.value = "Prestamo Personal Asociado";
+        presUniInp.value = 1;
+        presValInp.value = 0;
+
+        chkOtrasRet.checked = false;
+        boxOtrasRet.hidden = true;
+        btnAddOtraRet.hidden = true;
+        listaOtrasRet.replaceChildren();
+
+        const monos = lista.filter(r => r.tipo === "RETENCION_MONOTRIBUTO");
+        if (monos.length > 0) {
+            chkMono.checked = true;
+            boxMono.hidden = false;
+            const tot = monos.reduce((acc, it) => acc + Number(it.total || 0), 0);
+            monoDetInp.value = monos.map(it => it.motivo).join(" / ");
+            monoUniInp.value = 1;
+            monoValInp.value = tot.toFixed(2);
+        }
+
+        const prestamos = lista.filter(r => r.tipo === "PRESTAMO_COOPERATIVA");
+        if (prestamos.length > 0) {
+            chkPres.checked = true;
+            boxPres.hidden = false;
+            const tot = prestamos.reduce((acc, it) => acc + Number(it.total || 0), 0);
+            presDetInp.value = prestamos.map(it => it.motivo).join(" / ");
+            presUniInp.value = 1;
+            presValInp.value = tot.toFixed(2);
+        }
+
+        const otras = lista.filter(r => r.tipo === "OTRAS_RETENCIONES");
+        if (otras.length > 0) {
+            chkOtrasRet.checked = true;
+            boxOtrasRet.hidden = false;
+            btnAddOtraRet.hidden = false;
+            otras.forEach(it => agregarFilaOtraRetencion(it.motivo, it.unidad, it.valorUnidad));
+        }
+
+        if (lista.length > 0) {
+            avisoRet.textContent = `Se precargaron ${lista.length} retención(es) registrada(s) para este socio en el período ${mesInp.value}.`;
+        } else {
+            avisoRet.textContent = "Este socio no tiene retenciones previas cargadas para este mes. Podés marcarlas acá si querés aplicar alguna.";
+        }
+    }
+})();
+</script>
 </body>
 </html>

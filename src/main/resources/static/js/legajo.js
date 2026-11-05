@@ -227,6 +227,7 @@
         var entrada = panel.querySelector('[data-entrada]');
         var estado = panel.querySelector('[data-estado]');
         var lista = panel.querySelector('[data-archivos]');
+        var puedeEliminar = panel.getAttribute('data-puede-eliminar') !== 'false';
 
         function avisar(texto, esError) {
             estado.textContent = texto;
@@ -261,7 +262,9 @@
                     });
                     item.appendChild(enlace);
                     item.appendChild(detalle);
-                    item.appendChild(borrar);
+                    if (puedeEliminar) {
+                        item.appendChild(borrar);
+                    }
                     lista.appendChild(item);
                 });
             }).catch(function (error) { avisar(error.message, true); });

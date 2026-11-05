@@ -6,6 +6,7 @@ import com.cooperativa.cuidado.cliente.ClienteRepository;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
 import com.cooperativa.cuidado.legajo.TipoLegajo;
 import com.cooperativa.cuidado.legajo.service.LegajoService;
+import com.cooperativa.cuidado.liquidacionfamilia.LiquidacionFamiliaRepository;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -21,14 +22,17 @@ public class ClienteService {
     private final ClienteRepository clienteRepository;
     private final AsistenciaRepository asistenciaRepository;
     private final LegajoService legajoService;
+    private final LiquidacionFamiliaRepository liquidacionFamiliaRepository;
 
     public ClienteService(
             ClienteRepository clienteRepository,
             AsistenciaRepository asistenciaRepository,
-            LegajoService legajoService) {
+            LegajoService legajoService,
+            LiquidacionFamiliaRepository liquidacionFamiliaRepository) {
         this.clienteRepository = clienteRepository;
         this.asistenciaRepository = asistenciaRepository;
         this.legajoService = legajoService;
+        this.liquidacionFamiliaRepository = liquidacionFamiliaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +58,11 @@ public class ClienteService {
         cliente.setTelefono(datos.getTelefono());
         cliente.setCorreo(datos.getCorreo());
         cliente.setNombrePaciente(datos.getNombrePaciente());
+        cliente.setDniPaciente(datos.getDniPaciente());
         cliente.setDomicilio(datos.getDomicilio());
+        cliente.setCiudad(datos.getCiudad());
+        cliente.setLocalidad(datos.getLocalidad());
+        cliente.setCodigoPostal(datos.getCodigoPostal());
         cliente.setObservacionMedica(datos.getObservacionMedica());
         return clienteRepository.save(cliente);
     }
@@ -62,6 +70,8 @@ public class ClienteService {
     @Transactional
     public void eliminar(Long id) {
         Cliente cliente = buscar(id);
+        liquidacionFamiliaRepository.deleteAllByClienteId(id);
+        liquidacionFamiliaRepository.flush();
         asistenciaRepository.deleteAllByClienteId(id);
         asistenciaRepository.flush();
         legajoService.eliminarLegajo(TipoLegajo.CLIENTE, id);

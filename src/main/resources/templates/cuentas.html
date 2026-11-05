@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cuentas | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=3)}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">ADMINISTRACIÓN DE ACCESO</p>
+            <h1>Cuentas</h1>
+            <p class="muted">Administrá los usuarios del sistema, sus credenciales, datos personales y roles de acceso.</p>
+        </div>
+        <div class="quick-links">
+            <a class="button button-secondary" th:href="@{/cuentas/roles}">Gestionar roles y permisos</a>
+            <a class="button button-primary" th:href="@{/cuentas/nueva}">Nueva cuenta</a>
+        </div>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <div class="content-card table-card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Apellido y Nombre</th>
+                    <th>DNI</th>
+                    <th>Rol</th>
+                    <th>Vinculación</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="cuenta : ${usuarios}">
+                    <td><strong th:text="${cuenta.username}"></strong></td>
+                    <td th:text="|${cuenta.apellido}, ${cuenta.nombre}|"></td>
+                    <td th:text="${cuenta.dni}"></td>
+                    <td><span class="badge" th:text="${cuenta.rol.nombre}"></span></td>
+                    <td>
+                        <span class="badge badge-ok" th:if="${dniSocioRegistrado[cuenta.dni]}">Vinculado a Socio (DNI)</span>
+                        <span class="muted" th:if="${!dniSocioRegistrado[cuenta.dni] && cuenta.esSoloTurnosPropios()}">Sin socio con ese DNI</span>
+                        <span class="muted" th:if="${!dniSocioRegistrado[cuenta.dni] && !cuenta.esSoloTurnosPropios()}">Acceso general</span>
+                    </td>
+                    <td class="row-actions">
+                        <a class="button button-secondary" th:href="@{/cuentas/{id}/editar(id=${cuenta.id})}">Editar</a>
+                        <form method="post" th:action="@{/cuentas/{id}/eliminar(id=${cuenta.id})}"
+                              data-confirm="¿Eliminar esta cuenta de usuario?">
+                            <button class="button button-danger" type="submit"
+                                    th:disabled="${usuarioActual != null && usuarioActual.id == cuenta.id}"
+                                    th:title="${usuarioActual != null && usuarioActual.id == cuenta.id} ? 'No podés eliminar tu propia cuenta activa' : null">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(usuarios)}">
+                    <td colspan="6" class="empty-state">No hay cuentas registradas.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+

@@ -36,6 +36,11 @@ public class CalendarioService {
 
     @Transactional(readOnly = true)
     public CalendarioRespuesta consultar(LocalDate desde, LocalDate hasta) {
+        return consultar(desde, hasta, null);
+    }
+
+    @Transactional(readOnly = true)
+    public CalendarioRespuesta consultar(LocalDate desde, LocalDate hasta, String dniSocioFiltro) {
         if (desde == null || hasta == null || hasta.isBefore(desde)) {
             throw new DatosInvalidosException("Seleccioná un rango de fechas válido para consultar el calendario.");
         }
@@ -47,10 +52,16 @@ public class CalendarioService {
         List<Asistencia> asistencias = asistenciaRepository
                 .findAllByFechaBetweenOrderByHoraInicioAsc(desde.minusDays(1), hasta);
         List<EventoCalendario> eventos = asistencias.stream()
+                .filter(asistencia -> dniSocioFiltro == null
+                        || dniSocioFiltro.equals(asistencia.getSocio().getDni()))
                 .map(this::convertirEvento)
                 .filter(evento -> evento.inicio().isBefore(hastaExclusivo.atStartOfDay())
                         && evento.fin().isAfter(desde.atStartOfDay()))
                 .toList();
+
+        if (dniSocioFiltro != null) {
+            return new CalendarioRespuesta(desde, hasta, eventos, List.of(), List.of());
+        }
 
         List<SocioDisponibleCalendario> sociosDisponibles = socioRepository
                 .findAllByEstado(EstadoSocio.DISPONIBLE_REEMPLAZO).stream()
@@ -89,7 +100,13 @@ public class CalendarioService {
                 asistencia.getSocio().getDni(),
                 asistencia.getCliente().getNombrePaciente(),
                 asistencia.getCliente().getDomicilio(),
-                asistencia.getServicioDomicilio().getTipoServicio().getNombre());
+                asistencia.getServicioDomicilio().getTipoServicio().getNombre(),
+                asistencia.getImporteViatico(),
+                asistencia.getImporteSanatorio(),
+                asistencia.getMarcacionEntrada(),
+                asistencia.getMarcacionSalida(),
+                asistencia.getAclaracionTurno(),
+                asistencia.esDiaDelTurno(LocalDate.now()));
     }
 
     private SocioDisponibleCalendario convertirSocioDisponible(Socio socio) {

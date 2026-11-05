@@ -1,5 +1,6 @@
 package com.cooperativa.cuidado.web.calendario;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -15,5 +16,11 @@ public record EventoCalendario(
         String dniSocio,
         String paciente,
         String domicilio,
-        String tipoServicio) {
+        String tipoServicio,
+        BigDecimal importeViatico,
+        BigDecimal importeSanatorio,
+        LocalDateTime marcacionEntrada,
+        LocalDateTime marcacionSalida,
+        String aclaracionTurno,
+        boolean diaDelTurnoHoy) {
 }

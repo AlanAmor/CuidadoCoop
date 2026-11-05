@@ -12,12 +12,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Email;
 
 import java.time.DayOfWeek;
 import java.util.EnumSet;
@@ -46,10 +46,22 @@ public class Socio {
     @Column(nullable = false, unique = true, length = 8)
     private String dni;
 
+    @Size(max = 20, message = "El CUIL no puede superar los 20 caracteres")
+    @Column(length = 20)
+    private String cuil;
+
     @NotBlank
     @Size(max = 200)
     @Column(nullable = false, length = 200)
     private String direccion;
+
+    @Size(max = 120, message = "La localidad no puede superar los 120 caracteres")
+    @Column(length = 120)
+    private String localidad;
+
+    @Size(max = 15, message = "El código postal no puede superar los 15 caracteres")
+    @Column(name = "codigo_postal", length = 15)
+    private String codigoPostal;
 
     @NotBlank
     @Pattern(regexp = "[0-9+(). -]{7,20}", message = "El teléfono tiene un formato inválido")
@@ -138,12 +150,36 @@ public class Socio {
         this.dni = dni;
     }
 
+    public String getCuil() {
+        return cuil;
+    }
+
+    public void setCuil(String cuil) {
+        this.cuil = cuil;
+    }
+
     public String getDireccion() {
         return direccion;
     }
 
     public void setDireccion(String direccion) {
         this.direccion = direccion;
+    }
+
+    public String getLocalidad() {
+        return localidad;
+    }
+
+    public void setLocalidad(String localidad) {
+        this.localidad = localidad;
+    }
+
+    public String getCodigoPostal() {
+        return codigoPostal;
+    }
+
+    public void setCodigoPostal(String codigoPostal) {
+        this.codigoPostal = codigoPostal;
     }
 
     public String getTelefono() {

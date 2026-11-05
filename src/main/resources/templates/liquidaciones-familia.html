@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Liquidación Familia | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        .ucd-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 14px 18px;
+            background: #f3f8fb;
+            border: 1px solid #bdd6e2;
+            border-left: 5px solid #00576c;
+            border-radius: 10px;
+            margin-bottom: 18px;
+        }
+        .ucd-banner h3 {
+            margin: 0 0 4px 0;
+            color: #00576c;
+            font-size: 1rem;
+            letter-spacing: 0.03em;
+        }
+        .ucd-banner p {
+            margin: 0;
+            font-size: 0.86rem;
+            color: #475569;
+        }
+        .periodo-pill {
+            background: #00576c;
+            color: #ffffff;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.03em;
+        }
+        .ucd-section-title {
+            background: #00576c;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.86rem;
+            letter-spacing: 0.03em;
+            padding: 7px 12px;
+            border-radius: 6px;
+            margin: 18px 0 10px 0;
+            text-transform: uppercase;
+        }
+        .cuidadores-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .cuidadores-table th {
+            background: #00576c;
+            color: #ffffff;
+            padding: 8px 10px;
+            text-align: center;
+            font-size: 0.82rem;
+            border: 1px solid #004657;
+        }
+        .cuidadores-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+        }
+        .cuidadores-table tbody tr:nth-child(odd) {
+            background: #f8fafc;
+        }
+        .cuidadores-table tbody tr:nth-child(even) {
+            background: #dbe8f4;
+        }
+        .cuidadores-table input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .resumen-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+            gap: 12px;
+            background: #f1f6f9;
+            border: 2px solid #00576c;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 16px;
+        }
+        .resumen-item span {
+            display: block;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #334155;
+        }
+        .resumen-item strong {
+            font-size: 1.15rem;
+            color: #0f172a;
+        }
+        .resumen-saldo strong {
+            font-size: 1.32rem;
+            color: #00576c;
+        }
+        .datos-fijos-coop {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
+            padding: 14px 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.88rem;
+        }
+        .datos-fijos-coop h4 {
+            margin: 0 0 6px 0;
+            color: #0082a4;
+            font-size: 0.86rem;
+            text-transform: uppercase;
+        }
+        .datos-fijos-coop p {
+            margin: 2px 0;
+            color: #334155;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">MÓDULO FINANCIERO · UNIDAD DE CUIDADO DOMICILIARIO</p>
+            <h1>Liquidación Familia</h1>
+            <p class="muted">Generá la liquidación mensual del servicio para la familia del paciente con el formato oficial en Excel y PDF.</p>
+        </div>
+        <a class="button button-secondary" th:href="@{/clientes}">Ver Pacientes / Clientes</a>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" role="status">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+            <span th:text="${mensajeExito}">Liquidación emitida</span>
+            <span th:if="${recienEmitida != null}" style="display:flex; gap:8px;">
+                <a class="button button-primary button-sm"
+                   th:href="@{/liquidaciones-familia/{id}/pdf(id=${recienEmitida.id})}">
+                    Descargar PDF
+                </a>
+                <a class="button button-secondary button-sm"
+                   th:href="@{/liquidaciones-familia/{id}/excel(id=${recienEmitida.id})}">
+                    Descargar Excel (.xlsx)
+                </a>
+            </span>
+        </div>
+    </div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <form class="content-card form-card" method="post" th:action="@{/liquidaciones-familia}" id="form-liq-familia">
+        <div class="ucd-banner">
+            <div>
+                <h3>UNIDAD DE CUIDADO DOMICILIARIO · GRUPO AZUL LTDA</h3>
+                <p>Mat. Nacional N° 60848 · Mat. Provincial N° 4124 · CUIT 30-71745352-9</p>
+            </div>
+            <span class="periodo-pill" id="lbl-periodo-etiqueta">PERIODO ACTUAL</span>
+        </div>
+
+        <div class="ucd-section-title">1. Selección de Paciente y Período</div>
+        <div class="form-grid">
+            <div class="field" style="grid-column: span 2;">
+                <label for="lf-clienteId">Paciente</label>
+                <select id="lf-clienteId" name="clienteId" required>
+                    <option value="">Seleccioná un paciente</option>
+                    <option th:each="c : ${clientes}"
+                            th:value="${c.id}"
+                            th:text="|${c.nombrePaciente}${c.dniPaciente != null and !#strings.isEmpty(c.dniPaciente) ? ' · DNI ' + c.dniPaciente : ''} · ${c.domicilio}|"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="lf-mes">Mes</label>
+                <select id="lf-mes" name="mes" required>
+                    <option th:each="m : ${meses}"
+                            th:value="${m.key}"
+                            th:selected="${m.key == mesActual}"
+                            th:text="${m.value}"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="lf-anio">Año</label>
+                <select id="lf-anio" name="anio" required>
+                    <option th:each="a : ${anios}"
+                            th:value="${a}"
+                            th:selected="${a == anioActual}"
+                            th:text="${a}"></option>
+                </select>
+            </div>
+        </div>
+
+        <p class="form-hint" style="margin-top:10px;">
+            Al elegir el paciente se cargan automáticamente sus datos registrados (podés completarlos o ajustarlos acá si alguno estaba vacío).
+        </p>
+        <div class="form-grid" style="margin-top:8px;">
+            <div class="field">
+                <label for="lf-nombrePaciente">Nombre del paciente</label>
+                <input id="lf-nombrePaciente" name="nombrePaciente" type="text" placeholder="Ej: GARCIA Susana" required>
+            </div>
+            <div class="field">
+                <label for="lf-dniPaciente">DNI</label>
+                <input id="lf-dniPaciente" name="dniPaciente" type="text" placeholder="Ej: 14500123">
+            </div>
+            <div class="field">
+                <label for="lf-telefono">Teléfono de contacto</label>
+                <input id="lf-telefono" name="telefonoContacto" type="text" placeholder="Ej: 3425001122">
+            </div>
+        </div>
+        <div class="form-grid" style="margin-top:10px;">
+            <div class="field">
+                <label for="lf-direccion">Dirección</label>
+                <input id="lf-direccion" name="direccion" type="text" placeholder="Ej: Sargento Cabral 1234" required>
+            </div>
+            <div class="field">
+                <label for="lf-ciudad">Ciudad</label>
+                <input id="lf-ciudad" name="ciudad" type="text" placeholder="Ej: Santa Fé">
+            </div>
+            <div class="field">
+                <label for="lf-localidad">Localidad</label>
+                <input id="lf-localidad" name="localidad" type="text" placeholder="Ej: Santa Fé">
+            </div>
+            <div class="field">
+                <label for="lf-cp">Código Postal (CP)</label>
+                <input id="lf-cp" name="codigoPostal" type="text" placeholder="Ej: 3000">
+            </div>
+        </div>
+
+        <div class="ucd-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>2. Detalle de Cuidadores, Horas y Valor Hora Cliente</span>
+            <button type="button" class="button button-secondary button-sm" id="btn-agregar-cuidador"
+                    style="background:#ffffff; color:#00576c;">
+                + Agregar línea manual
+            </button>
+        </div>
+        <p class="form-hint" id="aviso-turnos-familia" style="margin-bottom:8px;">
+            Seleccioná un paciente y período para cargar automáticamente los cuidadores que trabajaron y el valor hora cliente aplicado.
+        </p>
+
+        <div class="table-wrap">
+            <table class="cuidadores-table">
+                <thead>
+                <tr>
+                    <th style="width:36%;">CUIDADOR / A</th>
+                    <th style="width:18%;">HORAS</th>
+                    <th style="width:20%;">VALOR HORA</th>
+                    <th style="width:20%;">TOTAL DE LA LINEA</th>
+                    <th style="width:6%;"></th>
+                </tr>
+                </thead>
+                <tbody id="tbody-cuidadores"></tbody>
+            </table>
+        </div>
+
+        <div class="ucd-section-title">3. IVA, Impuestos y Criterios Visuales de Aumento</div>
+        <div class="form-grid">
+            <div class="field">
+                <label for="lf-iva-select">Alícuota de IVA</label>
+                <select id="lf-iva-select">
+                    <option value="0">0% (Exento / Sin IVA)</option>
+                    <option value="10.5">10,5%</option>
+                    <option value="21" selected>21%</option>
+                    <option value="27">27%</option>
+                    <option value="custom">Otro porcentaje...</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="lf-porcentajeIva">Porcentaje IVA (%)</label>
+                <input id="lf-porcentajeIva" name="porcentajeIva" type="number" step="0.01" min="0" max="100" value="21">
+            </div>
+            <div class="field">
+                <label for="lf-importeImpuestos">Impuestos ($ monto numérico)</label>
+                <input id="lf-importeImpuestos" name="importeImpuestos" type="number" step="0.01" min="0" value="0"
+                       placeholder="Ej: 41817.60">
+            </div>
+        </div>
+
+        <fieldset class="repeat-box" style="margin-top: 14px;">
+            <legend>Criterios de Valores de Aumento del Servicio (dato informativo visual, no altera totales)</legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="lf-ipc">Variación de IPC Salud (%)</label>
+                    <input id="lf-ipc" name="variacionIpcSalud" type="number" step="0.01" value="0">
+                </div>
+                <div class="field">
+                    <label for="lf-transporte">Transporte Público (%)</label>
+                    <input id="lf-transporte" name="transportePublico" type="number" step="0.01" value="0">
+                </div>
+                <div class="field">
+                    <label for="lf-paritaria">Aumento por Paritaria (%)</label>
+                    <input id="lf-paritaria" name="aumentoParitaria" type="number" step="0.01" value="0">
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="resumen-grid">
+            <div class="resumen-item">
+                <span>SUBTOTAL</span>
+                <strong id="res-subtotal">$ 0,00</strong>
+            </div>
+            <div class="resumen-item">
+                <span>IVA (<span id="res-iva-pct">21</span>%)</span>
+                <strong id="res-iva">$ 0,00</strong>
+            </div>
+            <div class="resumen-item">
+                <span>Impuestos</span>
+                <strong id="res-impuestos">$ 0,00</strong>
+            </div>
+            <div class="resumen-item">
+                <span>TOTAL MENSUAL del SERVICIO</span>
+                <strong id="res-total">$ 0,00</strong>
+            </div>
+            <div class="resumen-item resumen-saldo">
+                <span>SALDO A TRANSFERIR</span>
+                <strong id="res-saldo">$ 0,00</strong>
+            </div>
+        </div>
+
+        <div class="datos-fijos-coop">
+            <div>
+                <h4>Datos para Transferencia Bancaria</h4>
+                <p><strong>Banco:</strong> BICA</p>
+                <p><strong>Titular:</strong> COOPERATIVA DE TRABAJO GRUPO AZUL LIMITADA</p>
+                <p><strong>CBU:</strong> 4260010100200097013013</p>
+                <p><strong>Cuit:</strong> 30-71745352-9</p>
+            </div>
+            <div>
+                <h4>Pie Institucional Incluido</h4>
+                <p><strong>GRACIAS POR SU CONFIANZA!</strong></p>
+                <p>Cooperativa de Trabajo Grupo Azul Limitada.</p>
+                <p>Amenabar 3427. Santa Fé, Santa Fé, CP 3000,</p>
+                <p>Teléfono 3425237007 · grupoazul.ucd@gmail.com</p>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:18px;">
+            <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(clientes)}">
+                Generar Liquidación Familia
+            </button>
+        </div>
+    </form>
+
+    <section class="content-card table-card" style="margin-top: 24px;">
+        <h3>Liquidaciones Familia emitidas</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Paciente</th>
+                    <th>Período</th>
+                    <th>Subtotal</th>
+                    <th>IVA</th>
+                    <th>Impuestos</th>
+                    <th>Saldo a Transferir</th>
+                    <th>Descargar</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="l : ${liquidacionesEmitidas}">
+                    <td th:text="${l.fechaEmision}">2026-05-01</td>
+                    <td><strong th:text="${l.nombrePaciente}">GARCIA Susana</strong></td>
+                    <td th:text="${l.periodoEtiqueta}">PERIODO MAYO 2026</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(l.subtotal, 1, 2)}|">$ 0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(l.importeIva, 1, 2)} (${#numbers.formatDecimal(l.porcentajeIva, 1, 2)}%)|">$ 0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(l.importeImpuestos, 1, 2)}|">$ 0,00</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(l.saldoATransferir, 1, 2)}|">$ 0,00</strong></td>
+                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <a class="button button-primary button-sm"
+                           th:href="@{/liquidaciones-familia/{id}/pdf(id=${l.id})}">PDF</a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/liquidaciones-familia/{id}/excel(id=${l.id})}">Excel</a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(liquidacionesEmitidas)}">
+                    <td colspan="8" class="empty-state">Todavía no se generaron liquidaciones familiares.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<script>
+(() => {
+    const MESES_MAYUS = [
+        "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+        "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+    ];
+
+    const clienteSel = document.getElementById("lf-clienteId");
+    const mesSel = document.getElementById("lf-mes");
+    const anioSel = document.getElementById("lf-anio");
+    const lblPeriodo = document.getElementById("lbl-periodo-etiqueta");
+    const tbody = document.getElementById("tbody-cuidadores");
+    const btnAdd = document.getElementById("btn-agregar-cuidador");
+    const aviso = document.getElementById("aviso-turnos-familia");
+
+    const ivaSelect = document.getElementById("lf-iva-select");
+    const ivaInp = document.getElementById("lf-porcentajeIva");
+    const impInp = document.getElementById("lf-importeImpuestos");
+
+    function fmtMoney(v) {
+        return "$ " + Number(v || 0).toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function actualizarEtiquetaPeriodo() {
+        const m = Number(mesSel.value || 1);
+        const a = anioSel.value || "";
+        lblPeriodo.textContent = `PERIODO ${MESES_MAYUS[m - 1] || ""} ${a}`;
+    }
+
+    function agregarFilaCuidador(nombre = "", horas = 0, valorHora = 0) {
+        const tr = document.createElement("tr");
+
+        const tdNom = document.createElement("td");
+        const iNom = document.createElement("input");
+        iNom.type = "text";
+        iNom.name = "cuidadorNombre";
+        iNom.placeholder = "Nombre del cuidador/a";
+        iNom.value = nombre;
+        tdNom.appendChild(iNom);
+
+        const tdHor = document.createElement("td");
+        const iHor = document.createElement("input");
+        iHor.type = "number";
+        iHor.step = "0.01";
+        iHor.min = "0";
+        iHor.name = "cuidadorHoras";
+        iHor.value = horas;
+        tdHor.appendChild(iHor);
+
+        const tdVal = document.createElement("td");
+        const iVal = document.createElement("input");
+        iVal.type = "number";
+        iVal.step = "0.01";
+        iVal.min = "0";
+        iVal.name = "cuidadorValorHora";
+        iVal.value = valorHora;
+        tdVal.appendChild(iVal);
+
+        const tdTot = document.createElement("td");
+        tdTot.style.textAlign = "right";
+        tdTot.style.fontWeight = "700";
+        const spanTot = document.createElement("span");
+        spanTot.textContent = fmtMoney(Number(horas || 0) * Number(valorHora || 0));
+        tdTot.appendChild(spanTot);
+
+        const tdDel = document.createElement("td");
+        tdDel.style.textAlign = "center";
+        const bDel = document.createElement("button");
+        bDel.type = "button";
+        bDel.className = "button button-danger button-sm";
+        bDel.textContent = "×";
+        bDel.title = "Quitar línea";
+        bDel.addEventListener("click", () => {
+            tr.remove();
+            recalcular();
+        });
+        tdDel.appendChild(bDel);
+
+        const sync = () => {
+            spanTot.textContent = fmtMoney(Number(iHor.value || 0) * Number(iVal.value || 0));
+            recalcular();
+        };
+        iHor.addEventListener("input", sync);
+        iVal.addEventListener("input", sync);
+
+        tr.append(tdNom, tdHor, tdVal, tdTot, tdDel);
+        tbody.appendChild(tr);
+    }
+
+    function recalcular() {
+        let subtotal = 0;
+        tbody.querySelectorAll("tr").forEach(tr => {
+            const h = Number(tr.querySelector('[name="cuidadorHoras"]').value || 0);
+            const v = Number(tr.querySelector('[name="cuidadorValorHora"]').value || 0);
+            subtotal += h * v;
+        });
+
+        const pctIva = Math.max(0, Number(ivaInp.value || 0));
+        const iva = subtotal * pctIva / 100;
+        const impuestos = Math.max(0, Number(impInp.value || 0));
+        const total = subtotal + iva + impuestos;
+
+        document.getElementById("res-iva-pct").textContent = pctIva.toLocaleString("es-AR", {maximumFractionDigits: 2});
+        document.getElementById("res-subtotal").textContent = fmtMoney(subtotal);
+        document.getElementById("res-iva").textContent = fmtMoney(iva);
+        document.getElementById("res-impuestos").textContent = fmtMoney(impuestos);
+        document.getElementById("res-total").textContent = fmtMoney(total);
+        document.getElementById("res-saldo").textContent = fmtMoney(total);
+    }
+
+    ivaSelect.addEventListener("change", () => {
+        if (ivaSelect.value !== "custom") {
+            ivaInp.value = ivaSelect.value;
+            recalcular();
+        } else {
+            ivaInp.focus();
+        }
+    });
+    ivaInp.addEventListener("input", () => {
+        const match = Array.from(ivaSelect.options).find(o => o.value === ivaInp.value);
+        ivaSelect.value = match ? match.value : "custom";
+        recalcular();
+    });
+    impInp.addEventListener("input", recalcular);
+
+    btnAdd.addEventListener("click", () => {
+        agregarFilaCuidador("", 0, 0);
+        recalcular();
+    });
+
+    function cargarDatosPacienteYPeriodo(actualizarCamposPaciente) {
+        actualizarEtiquetaPeriodo();
+        if (!clienteSel.value) {
+            tbody.replaceChildren();
+            recalcular();
+            return;
+        }
+        const params = new URLSearchParams({
+            clienteId: clienteSel.value,
+            mes: mesSel.value,
+            anio: anioSel.value
+        });
+        fetch(`/api/liquidaciones-familia/previsualizar?${params.toString()}`, {
+            headers: {Accept: "application/json"}
+        })
+            .then(r => r.json().then(body => ({ok: r.ok, body})))
+            .then(({ok, body}) => {
+                if (!ok) return;
+                lblPeriodo.textContent = body.periodoEtiqueta;
+                if (actualizarCamposPaciente) {
+                    document.getElementById("lf-nombrePaciente").value = body.nombrePaciente || "";
+                    document.getElementById("lf-dniPaciente").value = body.dniPaciente || "";
+                    document.getElementById("lf-direccion").value = body.direccion || "";
+                    document.getElementById("lf-ciudad").value = body.ciudad || "";
+                    document.getElementById("lf-localidad").value = body.localidad || "";
+                    document.getElementById("lf-cp").value = body.codigoPostal || "";
+                    document.getElementById("lf-telefono").value = body.telefonoContacto || "";
+                }
+                tbody.replaceChildren();
+                const lista = body.cuidadores || [];
+                if (lista.length > 0) {
+                    lista.forEach(item => agregarFilaCuidador(item.nombreCuidador, item.horas, item.valorHoraCliente));
+                    aviso.textContent = `Se cargaron automáticamente ${lista.length} línea(s) de cuidadores registradas para este paciente en ${body.periodoEtiqueta}.`;
+                } else {
+                    agregarFilaCuidador("-", 0, 0);
+                    aviso.textContent = `No hay turnos registrados para este paciente en ${body.periodoEtiqueta}. Podés completar las líneas manualmente si lo necesitás.`;
+                }
+                recalcular();
+            });
+    }
+
+    clienteSel.addEventListener("change", () => cargarDatosPacienteYPeriodo(true));
+    mesSel.addEventListener("change", () => cargarDatosPacienteYPeriodo(false));
+    anioSel.addEventListener("change", () => cargarDatosPacienteYPeriodo(false));
+
+    actualizarEtiquetaPeriodo();
+    recalcular();
+})();
+</script>
+</body>
+</html>
+

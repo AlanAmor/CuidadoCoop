@@ -50,6 +50,8 @@ public class AsignacionService {
             turno.setFecha(fecha);
             turno.setHoraInicio(plantilla.getHoraInicio());
             turno.setHoraFin(plantilla.getHoraFin());
+            turno.setImporteViatico(plantilla.getImporteViatico());
+            turno.setImporteSanatorio(plantilla.getImporteSanatorio());
             try {
                 asistenciaService.registrar(turno);
             } catch (ReglaNegocioException ex) {

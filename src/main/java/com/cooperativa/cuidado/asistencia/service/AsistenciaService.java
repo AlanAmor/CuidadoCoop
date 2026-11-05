@@ -3,12 +3,13 @@ package com.cooperativa.cuidado.asistencia.service;
 import com.cooperativa.cuidado.asistencia.Asistencia;
 import com.cooperativa.cuidado.asistencia.AsistenciaRepository;
 import com.cooperativa.cuidado.cliente.ClienteRepository;
+import com.cooperativa.cuidado.exception.AccesoDenegadoException;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
 import com.cooperativa.cuidado.exception.ReglaNegocioException;
-import com.cooperativa.cuidado.socio.EstadoSocio;
 import com.cooperativa.cuidado.servicio.ServicioDomicilio;
 import com.cooperativa.cuidado.servicio.ServicioDomicilioRepository;
+import com.cooperativa.cuidado.socio.EstadoSocio;
 import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.socio.SocioRepository;
 import jakarta.validation.ConstraintViolation;
@@ -17,11 +18,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -56,6 +60,8 @@ public class AsistenciaService {
     public Asistencia registrar(Asistencia asistencia) {
         asistencia.setId(null);
         cargarReferenciasBloqueadas(asistencia);
+        asistencia.setImporteViatico(normalizarAdicional(asistencia.getImporteViatico(), "viático"));
+        asistencia.setImporteSanatorio(normalizarAdicional(asistencia.getImporteSanatorio(), "sanatorio"));
         asistencia.calcularHorasTotales();
         asistencia.capturarValorHora();
         validarDatos(asistencia);
@@ -162,6 +168,12 @@ public class AsistenciaService {
         existente.setFecha(datos.getFecha());
         existente.setHoraInicio(datos.getHoraInicio());
         existente.setHoraFin(datos.getHoraFin());
+        if (datos.getImporteViatico() != null) {
+            existente.setImporteViatico(normalizarAdicional(datos.getImporteViatico(), "viático"));
+        }
+        if (datos.getImporteSanatorio() != null) {
+            existente.setImporteSanatorio(normalizarAdicional(datos.getImporteSanatorio(), "sanatorio"));
+        }
         if (cambiaServicio) {
             existente.setValorHoraAplicado(null);
             existente.setValorHoraSocioAplicado(null);
@@ -173,6 +185,166 @@ public class AsistenciaService {
         }
         validarSolapamiento(existente, id);
         return asistenciaRepository.save(existente);
+    }
+
+    /** Permite cargar o editar viáticos y sanatorio de cualquier turno (incluso si ya finalizó). */
+    @Transactional
+    public Asistencia actualizarAdicionales(Long id, BigDecimal importeViatico, BigDecimal importeSanatorio) {
+        Asistencia existente = asistenciaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "El turno seleccionado ya no existe. Actualizá el calendario."));
+        existente.setImporteViatico(normalizarAdicional(importeViatico, "viático"));
+        existente.setImporteSanatorio(normalizarAdicional(importeSanatorio, "sanatorio"));
+        return asistenciaRepository.save(existente);
+    }
+
+    /**
+     * Registra la entrada, salida o aclaración por parte del propio socio asignado al turno.
+     * Solo se permite el día operativo del turno.
+     */
+    @Transactional
+    public Asistencia registrarMarcacionSocio(
+            Long id,
+            String dniSocio,
+            String accion,
+            String aclaracion,
+            LocalDateTime momentoActual) {
+        Asistencia existente = asistenciaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "El turno seleccionado ya no existe. Actualizá el calendario."));
+
+        if (dniSocio == null || !dniSocio.equals(existente.getSocio().getDni())) {
+            throw new AccesoDenegadoException(
+                    "Solo el socio asignado al turno o un administrador pueden registrar entrada, salida o aclaraciones.");
+        }
+
+        LocalDateTime ahora = (momentoActual != null ? momentoActual : LocalDateTime.now())
+                .truncatedTo(ChronoUnit.MINUTES);
+        if (!existente.esDiaDelTurno(ahora.toLocalDate())) {
+            throw new ReglaNegocioException(
+                    "Las entradas, salidas y aclaraciones solo se pueden marcar el día del turno. Solo el administrador puede registrarlas en cualquier momento.");
+        }
+
+        String tipoAccion = accion == null ? "" : accion.trim().toUpperCase(Locale.ROOT);
+        switch (tipoAccion) {
+            case "ENTRADA" -> {
+                if (existente.getMarcacionEntrada() != null) {
+                    throw new ReglaNegocioException(
+                            "La entrada de este turno ya fue registrada. Si necesitás corregirla, contactá al administrador.");
+                }
+                existente.setMarcacionEntrada(ahora);
+                if (aclaracion != null) {
+                    existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+                }
+            }
+            case "SALIDA" -> {
+                if (existente.getMarcacionSalida() != null) {
+                    throw new ReglaNegocioException(
+                            "La salida de este turno ya fue registrada. Si necesitás corregirla, contactá al administrador.");
+                }
+                LocalDateTime salida = ahora;
+                if (existente.getMarcacionEntrada() != null && salida.isBefore(existente.getMarcacionEntrada())) {
+                    salida = existente.getMarcacionEntrada();
+                }
+                existente.setMarcacionSalida(salida);
+                if (aclaracion != null) {
+                    existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+                }
+            }
+            case "ACLARACION" -> existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+            default -> throw new DatosInvalidosException(
+                    "Seleccioná una acción válida (entrada, salida o aclaración).");
+        }
+
+        validarDatos(existente);
+        return asistenciaRepository.save(existente);
+    }
+
+    /**
+     * Permite al administrador registrar, corregir o limpiar entradas, salidas y aclaraciones
+     * en cualquier turno y en cualquier momento.
+     */
+    @Transactional
+    public Asistencia registrarMarcacionAdmin(
+            Long id,
+            String accion,
+            LocalDateTime marcacionEntrada,
+            LocalDateTime marcacionSalida,
+            String aclaracion,
+            LocalDateTime momentoActual) {
+        Asistencia existente = asistenciaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "El turno seleccionado ya no existe. Actualizá el calendario."));
+
+        LocalDateTime ahora = (momentoActual != null ? momentoActual : LocalDateTime.now())
+                .truncatedTo(ChronoUnit.MINUTES);
+        String tipoAccion = accion == null || accion.isBlank()
+                ? "ADMIN_GUARDAR"
+                : accion.trim().toUpperCase(Locale.ROOT);
+
+        switch (tipoAccion) {
+            case "ENTRADA" -> {
+                existente.setMarcacionEntrada(
+                        marcacionEntrada != null ? marcacionEntrada.truncatedTo(ChronoUnit.MINUTES) : ahora);
+                if (aclaracion != null) {
+                    existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+                }
+            }
+            case "SALIDA" -> {
+                existente.setMarcacionSalida(
+                        marcacionSalida != null ? marcacionSalida.truncatedTo(ChronoUnit.MINUTES) : ahora);
+                if (aclaracion != null) {
+                    existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+                }
+            }
+            case "ACLARACION" -> existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+            case "ADMIN_GUARDAR" -> {
+                existente.setMarcacionEntrada(
+                        marcacionEntrada != null ? marcacionEntrada.truncatedTo(ChronoUnit.MINUTES) : null);
+                existente.setMarcacionSalida(
+                        marcacionSalida != null ? marcacionSalida.truncatedTo(ChronoUnit.MINUTES) : null);
+                existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+            }
+            default -> throw new DatosInvalidosException(
+                    "Seleccioná una acción válida para el registro de asistencia.");
+        }
+
+        if (existente.getMarcacionEntrada() != null
+                && existente.getMarcacionSalida() != null
+                && existente.getMarcacionSalida().isBefore(existente.getMarcacionEntrada())) {
+            throw new DatosInvalidosException(
+                    "La fecha y hora de salida no puede ser anterior a la de entrada.");
+        }
+
+        validarDatos(existente);
+        return asistenciaRepository.save(existente);
+    }
+
+    private String normalizarAclaracion(String texto) {
+        if (texto == null) {
+            return null;
+        }
+        String limpio = texto.trim();
+        if (limpio.isEmpty()) {
+            return null;
+        }
+        if (limpio.length() > 1000) {
+            throw new DatosInvalidosException("La aclaración del turno no puede superar los 1000 caracteres.");
+        }
+        return limpio;
+    }
+
+    private BigDecimal normalizarAdicional(BigDecimal monto, String etiqueta) {
+        if (monto == null) {
+            return null;
+        }
+        if (monto.compareTo(BigDecimal.ZERO) < 0) {
+            throw new DatosInvalidosException("El importe de " + etiqueta + " no puede ser negativo.");
+        }
+        if (monto.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return monto.setScale(2, RoundingMode.HALF_UP);
     }
 
     private void cargarReferenciasBloqueadas(Asistencia asistencia) {

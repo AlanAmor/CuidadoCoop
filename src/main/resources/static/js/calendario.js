@@ -19,24 +19,33 @@
     let anchor = new Date(today);
     let currentEvents = [];
     let activeRequest = 0;
+    let transitionDir = 0;
+    let loadingTimer = null;
 
     document.getElementById("calendar-prev").addEventListener("click", () => movePeriod(-1));
     document.getElementById("calendar-next").addEventListener("click", () => movePeriod(1));
     document.getElementById("calendar-today").addEventListener("click", () => {
+        transitionDir = 0;
         anchor = new Date(today);
         render();
     });
-    viewSelect.addEventListener("change", render);
+    viewSelect.addEventListener("change", () => {
+        transitionDir = 0;
+        render();
+    });
     dateInput.addEventListener("change", () => {
         if (dateInput.value) {
+            transitionDir = 0;
             anchor = parseDate(dateInput.value);
             render();
         }
     });
 
+    bindTodayQuickCards();
     render();
 
     function movePeriod(direction) {
+        transitionDir = direction;
         const view = viewSelect.value;
         if (view === "month") {
             anchor = new Date(anchor.getFullYear(), anchor.getMonth() + direction, 1);
@@ -58,7 +67,16 @@
         const request = ++activeRequest;
         errorBox.hidden = true;
         detailBox.hidden = true;
-        grid.replaceChildren(createMessage("Consultando turnos…", "calendar-loading"));
+        if (!grid.children.length) {
+            grid.replaceChildren(createMessage("Consultando turnos…", "calendar-loading"));
+        } else {
+            clearTimeout(loadingTimer);
+            loadingTimer = setTimeout(() => {
+                if (request === activeRequest) {
+                    grid.classList.add("is-fetching");
+                }
+            }, 90);
+        }
         const params = new URLSearchParams({
             desde: formatDate(range.start),
             hasta: formatDate(range.end)
@@ -79,7 +97,13 @@
                 if (request !== activeRequest) {
                     return;
                 }
+                clearTimeout(loadingTimer);
+                grid.classList.remove("is-fetching");
                 currentEvents = data.eventos || [];
+                const socioPill = document.getElementById("socio-periodo-vacio");
+                if (socioPill && grid.dataset.vistaSocio === "true") {
+                    socioPill.hidden = currentEvents.length > 0;
+                }
                 renderCalendar(range, view, currentEvents);
                 renderList(availablePartners, availableCount, data.sociosDisponibles || [],
                     item => {
@@ -106,6 +130,8 @@
                 if (request !== activeRequest) {
                     return;
                 }
+                clearTimeout(loadingTimer);
+                grid.classList.remove("is-fetching");
                 grid.replaceChildren();
                 errorBox.textContent = error.message;
                 errorBox.hidden = false;
@@ -114,6 +140,18 @@
                 renderList(unassignedServices, unassignedCount, [],
                     () => "", "No se pudo consultar los clientes.");
             });
+    }
+
+    function animClassForDirection() {
+        const dir = transitionDir;
+        transitionDir = 0;
+        if (dir > 0) {
+            return "calendar-enter-next";
+        }
+        if (dir < 0) {
+            return "calendar-enter-prev";
+        }
+        return "calendar-enter-fade";
     }
 
     function renderCalendar(range, view, events) {
@@ -128,7 +166,7 @@
     function renderTimeline(range, view, events) {
         const days = listDays(range.start, range.end);
         const table = document.createElement("div");
-        table.className = `timeline-grid ${view === "day" ? "timeline-day" : ""}`;
+        table.className = `timeline-grid ${view === "day" ? "timeline-day" : ""} ${animClassForDirection()}`;
         table.style.setProperty("--day-count", days.length);
         table.appendChild(createElement("div", "timeline-corner", "Hora"));
         days.forEach(day => {
@@ -241,14 +279,201 @@
         card.appendChild(createElement("span", "", event.paciente));
         card.appendChild(createElement("span", "calendar-event-meta", event.nombreSocio));
         card.appendChild(createElement("span", "calendar-event-address", event.domicilio));
+        const badges = createEventBadges(event);
+        if (badges) {
+            card.appendChild(badges);
+        }
         card.addEventListener("click", () => showDetail(event));
         return card;
+    }
+
+    function createEventBadges(event) {
+        if (!event.marcacionEntrada && !event.marcacionSalida && !event.aclaracionTurno) {
+            return null;
+        }
+        const row = createElement("span", "calendar-event-badges");
+        if (event.marcacionEntrada && event.marcacionSalida) {
+            row.appendChild(createElement("span", "event-attendance-pill is-complete", "✓ E/S"));
+        } else if (event.marcacionEntrada) {
+            row.appendChild(createElement("span", "event-attendance-pill is-in-progress", "● Entrada"));
+        } else if (event.marcacionSalida) {
+            row.appendChild(createElement("span", "event-attendance-pill is-complete", "✓ Salida"));
+        }
+        if (event.aclaracionTurno) {
+            row.appendChild(createElement("span", "event-attendance-pill is-note", "⚠ Nota"));
+        }
+        return row;
+    }
+
+    function moneyText(val) {
+        const num = Number(val || 0);
+        return `$ ${num.toLocaleString("es-AR", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+
+    function dateTimeShort(value) {
+        if (!value) {
+            return "Sin marcar";
+        }
+        const d = new Date(value);
+        return new Intl.DateTimeFormat("es-AR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        }).format(d);
+    }
+
+    function dateTimeCompact(value) {
+        if (!value) {
+            return "";
+        }
+        const d = new Date(value);
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        return `${dd}/${mm} ${hh}:${mi}`;
+    }
+
+    function toLocalDateTimeInput(value) {
+        if (!value) {
+            return "";
+        }
+        const str = String(value);
+        if (str.length >= 16 && str.includes("T")) {
+            return str.slice(0, 16);
+        }
+        const d = new Date(value);
+        return `${formatDate(d)}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function normalizeDateTimeIso(value) {
+        if (!value) {
+            return null;
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+        return trimmed.length === 16 ? `${trimmed}:00` : trimmed;
+    }
+
+    function enviarMarcacion(asistenciaId, payload) {
+        return fetch(`/api/asistencias/${asistenciaId}/marcacion`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json", Accept: "application/json"},
+            body: JSON.stringify(payload)
+        })
+            .then(res => res.json().then(body => ({ok: res.ok, body})))
+            .then(({ok, body}) => {
+                if (!ok) {
+                    throw new Error(body.error || "No se pudo registrar la marcación del turno.");
+                }
+                syncQuickCard(asistenciaId, body);
+                return body;
+            });
+    }
+
+    function syncQuickCard(asistenciaId, data) {
+        const card = document.querySelector(`.today-shift-item[data-asistencia-id="${asistenciaId}"]`);
+        if (!card) {
+            return;
+        }
+        const entBadge = card.querySelector(".js-quick-entrada-badge");
+        const entBtn = card.querySelector(".js-quick-entrada");
+        const salBadge = card.querySelector(".js-quick-salida-badge");
+        const salBtn = card.querySelector(".js-quick-salida");
+        const notaInput = card.querySelector(".js-quick-aclaracion");
+
+        if (entBadge && entBtn) {
+            if (data.marcacionEntrada) {
+                entBadge.textContent = `✓ Entrada: ${dateTimeCompact(data.marcacionEntrada)}`;
+                entBadge.hidden = false;
+                entBtn.hidden = true;
+            } else {
+                entBadge.hidden = true;
+                entBtn.hidden = false;
+            }
+        }
+        if (salBadge && salBtn) {
+            if (data.marcacionSalida) {
+                salBadge.textContent = `✓ Salida: ${dateTimeCompact(data.marcacionSalida)}`;
+                salBadge.hidden = false;
+                salBtn.hidden = true;
+            } else {
+                salBadge.hidden = true;
+                salBtn.hidden = false;
+            }
+        }
+        if (notaInput && data.aclaracionTurno !== undefined) {
+            notaInput.value = data.aclaracionTurno || "";
+        }
+    }
+
+    function bindTodayQuickCards() {
+        document.querySelectorAll(".today-shift-item").forEach(card => {
+            const asistenciaId = card.dataset.asistenciaId;
+            if (!asistenciaId) {
+                return;
+            }
+            const entBtn = card.querySelector(".js-quick-entrada");
+            const salBtn = card.querySelector(".js-quick-salida");
+            const saveNotaBtn = card.querySelector(".js-quick-guardar-nota");
+            const notaInput = card.querySelector(".js-quick-aclaracion");
+            const msgSpan = card.querySelector(".js-quick-msg");
+
+            const showMsg = (text, isError) => {
+                if (!msgSpan) {
+                    return;
+                }
+                msgSpan.textContent = text;
+                msgSpan.classList.toggle("is-error", Boolean(isError));
+                msgSpan.hidden = !text;
+            };
+
+            const runQuickAction = (accion, triggerBtn) => {
+                showMsg("", false);
+                if (triggerBtn) {
+                    triggerBtn.disabled = true;
+                }
+                enviarMarcacion(asistenciaId, {
+                    accion,
+                    aclaracionTurno: notaInput ? notaInput.value : null
+                })
+                    .then(body => {
+                        showMsg(body.mensaje, false);
+                        render();
+                    })
+                    .catch(err => {
+                        showMsg(err.message, true);
+                    })
+                    .finally(() => {
+                        if (triggerBtn) {
+                            triggerBtn.disabled = false;
+                        }
+                    });
+            };
+
+            if (entBtn) {
+                entBtn.addEventListener("click", () => runQuickAction("ENTRADA", entBtn));
+            }
+            if (salBtn) {
+                salBtn.addEventListener("click", () => runQuickAction("SALIDA", salBtn));
+            }
+            if (saveNotaBtn) {
+                saveNotaBtn.addEventListener("click", () => runQuickAction("ACLARACION", saveNotaBtn));
+            }
+        });
     }
 
     function showDetail(event) {
         detailBox.replaceChildren();
         detailBox.hidden = false;
         const title = createElement("h3", "detail-title", event.paciente);
+        const viaticoVal = Number(event.importeViatico || 0);
+        const sanatorioVal = Number(event.importeSanatorio || 0);
         const items = [
             {
                 className: "detail-item detail-item-socio",
@@ -267,10 +492,42 @@
             },
             {
                 className: "detail-item detail-item-horario",
-                label: "Horario:",
+                label: "Horario pactado:",
                 value: `${time(event.inicio)} a ${time(event.fin)} · ${dateText(event.inicio)}`
+            },
+            {
+                className: "detail-item detail-item-horario",
+                label: "Entrada marcada:",
+                value: dateTimeShort(event.marcacionEntrada)
+            },
+            {
+                className: "detail-item detail-item-horario",
+                label: "Salida marcada:",
+                value: dateTimeShort(event.marcacionSalida)
             }
         ];
+        if (event.aclaracionTurno) {
+            items.push({
+                className: "detail-item detail-item-aclaracion",
+                label: "Aclaración del turno:",
+                value: event.aclaracionTurno
+            });
+        }
+        if (viaticoVal > 0) {
+            items.push({
+                className: "detail-item detail-item-servicio",
+                label: "Viático asignado:",
+                value: moneyText(viaticoVal)
+            });
+        }
+        if (sanatorioVal > 0) {
+            items.push({
+                className: "detail-item detail-item-servicio",
+                label: "Sanatorio asignado:",
+                value: moneyText(sanatorioVal)
+            });
+        }
+
         const itemsContainer = createElement("div", "detail-items");
         items.forEach(item => {
             const p = createElement("p", item.className);
@@ -281,30 +538,309 @@
         });
         detailBox.append(title, itemsContainer);
 
+        const marcacionBox = buildMarcacionSection(event);
+        if (marcacionBox) {
+            detailBox.appendChild(marcacionBox);
+        }
+
+        const puedeModificar = grid.dataset.puedeModificar !== "false";
+        const puedeEliminar = grid.dataset.puedeEliminar !== "false";
+
+        if (puedeModificar) {
+            const extraBox = createElement("fieldset", "repeat-box");
+            extraBox.style.marginTop = "14px";
+            extraBox.appendChild(createElement("legend", "", "Viáticos y sanatorio del turno"));
+
+            const extraAlert = createElement("div", "alert alert-error");
+            extraAlert.hidden = true;
+            extraBox.appendChild(extraAlert);
+
+            const extraGrid = createElement("div", "form-grid");
+
+            const vWrap = createElement("div", "field");
+            const vChkLabel = createElement("label", "check-inline");
+            const vChk = document.createElement("input");
+            vChk.type = "checkbox";
+            vChk.checked = viaticoVal > 0;
+            vChkLabel.append(vChk, document.createTextNode(" Viático ($ al socio)"));
+            const vInput = document.createElement("input");
+            vInput.type = "number";
+            vInput.step = "0.01";
+            vInput.min = "0";
+            vInput.placeholder = "Ej: 3440.00";
+            vInput.value = viaticoVal > 0 ? String(viaticoVal) : "";
+            vInput.hidden = !vChk.checked;
+            vChk.addEventListener("change", () => {
+                vInput.hidden = !vChk.checked;
+                if (!vChk.checked) vInput.value = "";
+                else vInput.focus();
+            });
+            vWrap.append(vChkLabel, vInput);
+
+            const sWrap = createElement("div", "field");
+            const sChkLabel = createElement("label", "check-inline");
+            const sChk = document.createElement("input");
+            sChk.type = "checkbox";
+            sChk.checked = sanatorioVal > 0;
+            sChkLabel.append(sChk, document.createTextNode(" Sanatorio ($ al socio)"));
+            const sInput = document.createElement("input");
+            sInput.type = "number";
+            sInput.step = "0.01";
+            sInput.min = "0";
+            sInput.placeholder = "Ej: 4500.00";
+            sInput.value = sanatorioVal > 0 ? String(sanatorioVal) : "";
+            sInput.hidden = !sChk.checked;
+            sChk.addEventListener("change", () => {
+                sInput.hidden = !sChk.checked;
+                if (!sChk.checked) sInput.value = "";
+                else sInput.focus();
+            });
+            sWrap.append(sChkLabel, sInput);
+
+            extraGrid.append(vWrap, sWrap);
+            extraBox.appendChild(extraGrid);
+
+            const saveExtras = createElement("button", "button button-secondary button-sm", "Guardar viático / sanatorio");
+            saveExtras.type = "button";
+            saveExtras.style.marginTop = "10px";
+            saveExtras.addEventListener("click", () => {
+                extraAlert.hidden = true;
+                saveExtras.disabled = true;
+                const importeViatico = vChk.checked && vInput.value ? Number(vInput.value) : 0;
+                const importeSanatorio = sChk.checked && sInput.value ? Number(sInput.value) : 0;
+                fetch(`/api/asistencias/${event.asistenciaId}/adicionales`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json", Accept: "application/json"},
+                    body: JSON.stringify({importeViatico, importeSanatorio})
+                })
+                    .then(res => res.json().then(body => ({ok: res.ok, body})))
+                    .then(({ok, body}) => {
+                        if (!ok) {
+                            throw new Error(body.error || "No se pudo guardar el adicional del turno.");
+                        }
+                        notice.textContent = body.mensaje;
+                        notice.hidden = false;
+                        setTimeout(() => {
+                            notice.hidden = true;
+                        }, 6000);
+                        render();
+                    })
+                    .catch(err => {
+                        extraAlert.textContent = err.message;
+                        extraAlert.hidden = false;
+                        saveExtras.disabled = false;
+                    });
+            });
+            extraBox.appendChild(saveExtras);
+            detailBox.appendChild(extraBox);
+        }
+
         const actions = createElement("div", "form-actions");
         const close = createElement("button", "button button-quiet", "Cerrar");
         close.type = "button";
         close.addEventListener("click", () => {
             detailBox.hidden = true;
         });
-        const form = document.createElement("form");
-        form.method = "post";
-        form.action = `/asistencias/${event.asistenciaId}/eliminar`;
-        form.dataset.confirm = "¿Eliminar este turno? Esta acción no se puede deshacer.";
-        form.addEventListener("submit", submitEvent => {
-            if (!window.confirm(form.dataset.confirm)) {
-                submitEvent.preventDefault();
-            }
-        });
-        const remove = createElement("button", "button button-danger", "Eliminar turno");
-        remove.type = "submit";
-        form.appendChild(remove);
-        const edit = createElement("button", "button button-primary", "Editar turno");
-        edit.type = "button";
-        edit.addEventListener("click", () => showEditForm(event));
-        actions.append(close, edit, form);
+        actions.appendChild(close);
+        if (puedeModificar) {
+            const edit = createElement("button", "button button-primary", "Editar turno");
+            edit.type = "button";
+            edit.addEventListener("click", () => showEditForm(event));
+            actions.appendChild(edit);
+        }
+        if (puedeEliminar) {
+            const form = document.createElement("form");
+            form.method = "post";
+            form.action = `/asistencias/${event.asistenciaId}/eliminar`;
+            form.dataset.confirm = "¿Eliminar este turno? Esta acción no se puede deshacer.";
+            form.addEventListener("submit", submitEvent => {
+                if (!window.confirm(form.dataset.confirm)) {
+                    submitEvent.preventDefault();
+                }
+            });
+            const remove = createElement("button", "button button-danger", "Eliminar turno");
+            remove.type = "submit";
+            form.appendChild(remove);
+            actions.appendChild(form);
+        }
         detailBox.appendChild(actions);
         detailBox.scrollIntoView({behavior: "smooth", block: "nearest"});
+    }
+
+    function buildMarcacionSection(event) {
+        const esAdmin = grid.dataset.esAdmin === "true";
+        const usuarioDni = grid.dataset.usuarioDni || "";
+        const esSocioDelTurno = Boolean(usuarioDni) && usuarioDni === String(event.dniSocio || "");
+
+        if (!esAdmin && !esSocioDelTurno) {
+            return null;
+        }
+
+        const box = createElement("fieldset", "repeat-box marcacion-box");
+        box.style.marginTop = "14px";
+        box.appendChild(createElement("legend", "", esAdmin
+            ? "Control de entrada, salida y aclaración (Administrador)"
+            : "Registro de entrada, salida y aclaración del turno"));
+
+        const alertBox = createElement("div", "alert alert-error");
+        alertBox.hidden = true;
+        box.appendChild(alertBox);
+
+        const applyUpdate = body => {
+            event.marcacionEntrada = body.marcacionEntrada || null;
+            event.marcacionSalida = body.marcacionSalida || null;
+            event.aclaracionTurno = body.aclaracionTurno || null;
+            notice.textContent = body.mensaje;
+            notice.hidden = false;
+            setTimeout(() => {
+                notice.hidden = true;
+            }, 6000);
+            render();
+        };
+
+        if (esAdmin) {
+            const quickBar = createElement("div", "marcacion-status-row");
+            const btnNowIn = createElement("button", "button button-primary button-sm", "▶ Marcar entrada ahora");
+            btnNowIn.type = "button";
+            const btnNowOut = createElement("button", "button button-secondary button-sm", "⏹ Marcar salida ahora");
+            btnNowOut.type = "button";
+            const btnScheduled = createElement("button", "button button-quiet button-sm", "Usar horario pactado");
+            btnScheduled.type = "button";
+            const btnClear = createElement("button", "button button-quiet button-sm", "Limpiar marcas");
+            btnClear.type = "button";
+            quickBar.append(btnNowIn, btnNowOut, btnScheduled, btnClear);
+            box.appendChild(quickBar);
+
+            const dtGrid = createElement("div", "form-grid");
+            dtGrid.style.marginTop = "10px";
+
+            const inField = createInput("Entrada registrada (cualquier fecha/hora)", "datetime-local",
+                toLocalDateTimeInput(event.marcacionEntrada));
+            inField.input.required = false;
+
+            const outField = createInput("Salida registrada (cualquier fecha/hora)", "datetime-local",
+                toLocalDateTimeInput(event.marcacionSalida));
+            outField.input.required = false;
+
+            dtGrid.append(inField.wrapper, outField.wrapper);
+            box.appendChild(dtGrid);
+
+            const noteWrap = createElement("div", "field");
+            noteWrap.style.marginTop = "10px";
+            noteWrap.appendChild(createElement("label", "", "Aclaración / Observaciones del turno"));
+            const noteInput = createElement("textarea", "marcacion-textarea");
+            noteInput.rows = 2;
+            noteInput.maxLength = 1000;
+            noteInput.placeholder = "Llegada tarde, motivo o cualquier inconveniente ocurrido durante el turno...";
+            noteInput.value = event.aclaracionTurno || "";
+            noteWrap.appendChild(noteInput);
+            box.appendChild(noteWrap);
+
+            btnScheduled.addEventListener("click", () => {
+                inField.input.value = toLocalDateTimeInput(event.inicio);
+                outField.input.value = toLocalDateTimeInput(event.fin);
+            });
+            btnClear.addEventListener("click", () => {
+                inField.input.value = "";
+                outField.input.value = "";
+            });
+
+            const runAdminAction = (payload, btn) => {
+                alertBox.hidden = true;
+                btn.disabled = true;
+                enviarMarcacion(event.asistenciaId, payload)
+                    .then(applyUpdate)
+                    .catch(err => {
+                        alertBox.textContent = err.message;
+                        alertBox.hidden = false;
+                        btn.disabled = false;
+                    });
+            };
+
+            btnNowIn.addEventListener("click", () => runAdminAction({
+                accion: "ENTRADA",
+                aclaracionTurno: noteInput.value
+            }, btnNowIn));
+            btnNowOut.addEventListener("click", () => runAdminAction({
+                accion: "SALIDA",
+                aclaracionTurno: noteInput.value
+            }, btnNowOut));
+
+            const btnSaveAdmin = createElement("button", "button button-primary button-sm", "Guardar entrada, salida y aclaración");
+            btnSaveAdmin.type = "button";
+            btnSaveAdmin.style.marginTop = "10px";
+            btnSaveAdmin.addEventListener("click", () => runAdminAction({
+                accion: "ADMIN_GUARDAR",
+                marcacionEntrada: normalizeDateTimeIso(inField.input.value),
+                marcacionSalida: normalizeDateTimeIso(outField.input.value),
+                aclaracionTurno: noteInput.value
+            }, btnSaveAdmin));
+            box.appendChild(btnSaveAdmin);
+            return box;
+        }
+
+        // Vista para el socio asignado al turno
+        if (!event.diaDelTurnoHoy) {
+            const info = createElement("p", "form-hint",
+                "Solo podés marcar entrada, salida y aclaraciones el día asignado al turno. Si necesitás una corrección fuera de fecha, solicitala al administrador.");
+            info.style.margin = "0";
+            box.appendChild(info);
+            return box;
+        }
+
+        const statusRow = createElement("div", "marcacion-status-row");
+        const noteWrap = createElement("div", "field");
+        noteWrap.style.marginTop = "12px";
+        noteWrap.appendChild(createElement("label", "", "Aclaración del turno (si llegaste tarde o hubo algún inconveniente)"));
+        const noteInput = createElement("textarea", "marcacion-textarea");
+        noteInput.rows = 2;
+        noteInput.maxLength = 1000;
+        noteInput.placeholder = "Escribí acá si llegaste tarde o si hubo algún inconveniente en el turno...";
+        noteInput.value = event.aclaracionTurno || "";
+        noteWrap.appendChild(noteInput);
+
+        const runSocioAction = (accion, btn) => {
+            alertBox.hidden = true;
+            btn.disabled = true;
+            enviarMarcacion(event.asistenciaId, {
+                accion,
+                aclaracionTurno: noteInput.value
+            })
+                .then(applyUpdate)
+                .catch(err => {
+                    alertBox.textContent = err.message;
+                    alertBox.hidden = false;
+                    btn.disabled = false;
+                });
+        };
+
+        if (event.marcacionEntrada) {
+            statusRow.appendChild(createElement("span", "marcacion-pill is-ok",
+                `✓ Entrada marcada: ${dateTimeCompact(event.marcacionEntrada)}`));
+        } else {
+            const btnIn = createElement("button", "button button-primary button-sm", "▶ Marcar entrada");
+            btnIn.type = "button";
+            btnIn.addEventListener("click", () => runSocioAction("ENTRADA", btnIn));
+            statusRow.appendChild(btnIn);
+        }
+
+        if (event.marcacionSalida) {
+            statusRow.appendChild(createElement("span", "marcacion-pill is-ok",
+                `✓ Salida marcada: ${dateTimeCompact(event.marcacionSalida)}`));
+        } else {
+            const btnOut = createElement("button", "button button-secondary button-sm", "⏹ Marcar salida");
+            btnOut.type = "button";
+            btnOut.addEventListener("click", () => runSocioAction("SALIDA", btnOut));
+            statusRow.appendChild(btnOut);
+        }
+
+        const btnSaveNote = createElement("button", "button button-quiet button-sm", "Guardar aclaración");
+        btnSaveNote.type = "button";
+        btnSaveNote.style.marginTop = "8px";
+        btnSaveNote.addEventListener("click", () => runSocioAction("ACLARACION", btnSaveNote));
+
+        box.append(statusRow, noteWrap, btnSaveNote);
+        return box;
     }
 
     function showEditForm(event) {
@@ -321,6 +857,23 @@
         const clientField = createSelect("Cliente y domicilio");
         const serviceField = createSelect("Servicio");
 
+        const viaticoField = createInput("Viático ($ al socio, opcional)", "number",
+            Number(event.importeViatico || 0) > 0 ? String(event.importeViatico) : "");
+        viaticoField.input.required = false;
+        viaticoField.input.step = "0.01";
+        viaticoField.input.min = "0";
+        viaticoField.input.placeholder = "0.00";
+
+        const sanatorioField = createInput("Sanatorio ($ al socio, opcional)", "number",
+            Number(event.importeSanatorio || 0) > 0 ? String(event.importeSanatorio) : "");
+        sanatorioField.input.required = false;
+        sanatorioField.input.step = "0.01";
+        sanatorioField.input.min = "0";
+        sanatorioField.input.placeholder = "0.00";
+
+        const extrasGrid = createElement("div", "form-grid field-spaced");
+        extrasGrid.append(viaticoField.wrapper, sanatorioField.wrapper);
+
         const timeGrid = createElement("div", "form-grid");
         timeGrid.append(dateField.wrapper, startField.wrapper, endField.wrapper);
         const hint = createElement("p", "form-hint",
@@ -333,7 +886,7 @@
         const save = createElement("button", "button button-primary", "Guardar cambios");
         save.type = "button";
         actions.append(cancel, save);
-        detailBox.append(message, timeGrid, partnerField.wrapper, clientField.wrapper, serviceField.wrapper, hint, actions);
+        detailBox.append(message, timeGrid, partnerField.wrapper, clientField.wrapper, serviceField.wrapper, extrasGrid, hint, actions);
 
         const showError = text => {
             message.textContent = text;
@@ -407,7 +960,9 @@
                     servicioId: serviceField.select.value ? Number(serviceField.select.value) : null,
                     fecha: dateField.input.value || null,
                     horaInicio: startField.input.value || null,
-                    horaFin: endField.input.value || null
+                    horaFin: endField.input.value || null,
+                    importeViatico: viaticoField.input.value ? Number(viaticoField.input.value) : 0,
+                    importeSanatorio: sanatorioField.input.value ? Number(sanatorioField.input.value) : 0
                 })
             })
                 .then(response => response.json().then(body => ({ok: response.ok, body})))
@@ -700,13 +1255,17 @@
     }
 
     function renderMonth(range, events) {
-        const wrapper = createElement("div", "month-grid");
+        const wrapper = createElement("div", `month-grid ${animClassForDirection()}`);
         ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].forEach(day => {
             wrapper.appendChild(createElement("div", "month-weekday", day));
         });
 
+        const activeMonth = anchor.getMonth();
         listDays(range.start, range.end).forEach(day => {
             const cell = createElement("section", "month-day");
+            if (day.getMonth() !== activeMonth) {
+                cell.classList.add("is-outside-month");
+            }
             if (sameDay(day, today)) {
                 cell.classList.add("is-today");
             }
@@ -714,6 +1273,7 @@
             dayButton.type = "button";
             dayButton.setAttribute("aria-label", `Ver el ${formatDate(day)} por día`);
             dayButton.addEventListener("click", () => {
+                transitionDir = 0;
                 anchor = new Date(day);
                 viewSelect.value = "day";
                 render();
@@ -727,6 +1287,7 @@
             wrapper.appendChild(cell);
         });
         grid.appendChild(wrapper);
+        grid.scrollTop = 0;
     }
 
     function createMonthEvent(event, day) {
@@ -737,7 +1298,11 @@
         const inicioDia = startOfDay(day);
         const inicioVisible = inicioEvento < inicioDia ? inicioDia : inicioEvento;
         const continuacion = inicioEvento < inicioDia ? "Continúa · " : "";
-        chip.appendChild(createElement("strong", "", `${continuacion}${time(inicioVisible)} ${event.paciente}`));
+        const badgePrefix = event.marcacionEntrada && event.marcacionSalida
+            ? "✓ "
+            : (event.marcacionEntrada ? "● " : "");
+        const noteSuffix = event.aclaracionTurno ? " · ⚠" : "";
+        chip.appendChild(createElement("strong", "", `${badgePrefix}${continuacion}${time(inicioVisible)} ${event.paciente}${noteSuffix}`));
         chip.appendChild(createElement("span", "", event.nombreSocio));
         chip.addEventListener("click", () => showDetail(event));
         return chip;
@@ -753,6 +1318,9 @@
     }
 
     function renderList(list, count, items, renderItem, emptyText) {
+        if (!list || !count) {
+            return;
+        }
         count.textContent = String(items.length);
         list.replaceChildren();
         if (!items.length) {
@@ -781,9 +1349,8 @@
         }
         const first = new Date(date.getFullYear(), date.getMonth(), 1);
         const start = startOfWeek(first);
-        const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-        const end = startOfWeek(last);
-        end.setDate(end.getDate() + 6);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 41);
         return {start, end};
     }
 

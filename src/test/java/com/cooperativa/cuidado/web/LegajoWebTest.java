@@ -34,7 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.password=",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "app.legajos.directorio=target/legajos-test"
+        "app.legajos.directorio=target/legajos-test",
+        "app.seguridad.activa=false"
 })
 @AutoConfigureMockMvc
 @Transactional

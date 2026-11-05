@@ -6,8 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 @Entity
@@ -38,10 +38,26 @@ public class Cliente {
     @Column(nullable = false, length = 120)
     private String nombrePaciente;
 
+    @Size(max = 20)
+    @Column(name = "dni_paciente", length = 20)
+    private String dniPaciente;
+
     @NotBlank
     @Size(max = 200)
     @Column(nullable = false, length = 200)
     private String domicilio;
+
+    @Size(max = 120)
+    @Column(length = 120)
+    private String ciudad;
+
+    @Size(max = 120)
+    @Column(length = 120)
+    private String localidad;
+
+    @Size(max = 20)
+    @Column(name = "codigo_postal", length = 20)
+    private String codigoPostal;
 
     @Size(max = 2000)
     @Column(length = 2000)
@@ -90,12 +106,44 @@ public class Cliente {
         this.nombrePaciente = nombrePaciente;
     }
 
+    public String getDniPaciente() {
+        return dniPaciente;
+    }
+
+    public void setDniPaciente(String dniPaciente) {
+        this.dniPaciente = dniPaciente;
+    }
+
     public String getDomicilio() {
         return domicilio;
     }
 
     public void setDomicilio(String domicilio) {
         this.domicilio = domicilio;
+    }
+
+    public String getCiudad() {
+        return ciudad;
+    }
+
+    public void setCiudad(String ciudad) {
+        this.ciudad = ciudad;
+    }
+
+    public String getLocalidad() {
+        return localidad;
+    }
+
+    public void setLocalidad(String localidad) {
+        this.localidad = localidad;
+    }
+
+    public String getCodigoPostal() {
+        return codigoPostal;
+    }
+
+    public void setCodigoPostal(String codigoPostal) {
+        this.codigoPostal = codigoPostal;
     }
 
     public String getObservacionMedica() {

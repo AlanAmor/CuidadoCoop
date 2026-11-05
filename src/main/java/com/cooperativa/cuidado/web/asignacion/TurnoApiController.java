@@ -4,6 +4,8 @@ import com.cooperativa.cuidado.asistencia.Asistencia;
 import com.cooperativa.cuidado.asistencia.service.AsistenciaService;
 import com.cooperativa.cuidado.cliente.Cliente;
 import com.cooperativa.cuidado.cliente.ClienteRepository;
+import com.cooperativa.cuidado.cuenta.UsuarioCuenta;
+import com.cooperativa.cuidado.exception.AccesoDenegadoException;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
 import com.cooperativa.cuidado.exception.ReglaNegocioException;
@@ -13,6 +15,9 @@ import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.web.calendario.ClienteCalendario;
 import com.cooperativa.cuidado.web.calendario.ServicioOpcionCalendario;
 import com.cooperativa.cuidado.web.calendario.SocioDisponibleCalendario;
+import com.cooperativa.cuidado.web.seguridad.SesionHelper;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -24,10 +29,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** Endpoints JSON que usa el panel de edición de turnos del calendario. */
 @RestController
@@ -37,16 +46,22 @@ public class TurnoApiController {
     private final AsignacionService asignacionService;
     private final ServicioDomicilioRepository servicioRepository;
     private final ClienteRepository clienteRepository;
+    private final SesionHelper sesionHelper;
+    private final boolean seguridadActiva;
 
     public TurnoApiController(
             AsistenciaService asistenciaService,
             AsignacionService asignacionService,
             ServicioDomicilioRepository servicioRepository,
-            ClienteRepository clienteRepository) {
+            ClienteRepository clienteRepository,
+            SesionHelper sesionHelper,
+            @Value("${app.seguridad.activa:true}") boolean seguridadActiva) {
         this.asistenciaService = asistenciaService;
         this.asignacionService = asignacionService;
         this.servicioRepository = servicioRepository;
         this.clienteRepository = clienteRepository;
+        this.sesionHelper = sesionHelper;
+        this.seguridadActiva = seguridadActiva;
     }
 
     @GetMapping("/api/socios/disponibles")
@@ -112,8 +127,79 @@ public class TurnoApiController {
             datos.setFecha(cambio.fecha());
             datos.setHoraInicio(cambio.horaInicio());
             datos.setHoraFin(cambio.horaFin());
+            datos.setImporteViatico(cambio.importeViatico());
+            datos.setImporteSanatorio(cambio.importeSanatorio());
             asignacionService.modificar(id, datos);
             return ResponseEntity.ok(Map.of("mensaje", "El turno se actualizó correctamente."));
+        } catch (RecursoNoEncontradoException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (ReglaNegocioException ex) {
+            return error(HttpStatus.CONFLICT, ex.getMessage());
+        } catch (DatosInvalidosException ex) {
+            return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+    }
+
+    @PostMapping("/api/asistencias/{id}/adicionales")
+    public ResponseEntity<Map<String, String>> actualizarAdicionales(
+            @PathVariable Long id, @RequestBody(required = false) AdicionalesTurno adicionales) {
+        try {
+            BigDecimal viatico = adicionales != null ? adicionales.importeViatico() : BigDecimal.ZERO;
+            BigDecimal sanatorio = adicionales != null ? adicionales.importeSanatorio() : BigDecimal.ZERO;
+            asistenciaService.actualizarAdicionales(id, viatico, sanatorio);
+            return ResponseEntity.ok(Map.of("mensaje", "Viático y sanatorio del turno actualizados correctamente."));
+        } catch (RecursoNoEncontradoException ex) {
+            return error(HttpStatus.NOT_FOUND, ex.getMessage());
+        } catch (DatosInvalidosException ex) {
+            return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+    }
+
+    @PostMapping("/api/asistencias/{id}/marcacion")
+    public ResponseEntity<Map<String, Object>> registrarMarcacion(
+            @PathVariable Long id,
+            @RequestBody(required = false) MarcacionTurnoRequest solicitud,
+            HttpServletRequest request) {
+        Optional<UsuarioCuenta> usuarioOpt = sesionHelper.obtenerUsuarioActual(request);
+        if (usuarioOpt.isEmpty() && seguridadActiva) {
+            return error(HttpStatus.UNAUTHORIZED, "Tu sesión expiró. Iniciá sesión nuevamente.");
+        }
+        try {
+            boolean esAdmin = usuarioOpt.map(UsuarioCuenta::esAdmin).orElse(!seguridadActiva);
+            String accion = solicitud != null ? solicitud.accion() : null;
+            String aclaracion = solicitud != null ? solicitud.aclaracionTurno() : null;
+            Asistencia actualizada;
+            if (esAdmin) {
+                actualizada = asistenciaService.registrarMarcacionAdmin(
+                        id,
+                        accion,
+                        solicitud != null ? solicitud.marcacionEntrada() : null,
+                        solicitud != null ? solicitud.marcacionSalida() : null,
+                        aclaracion,
+                        LocalDateTime.now());
+            } else {
+                actualizada = asistenciaService.registrarMarcacionSocio(
+                        id,
+                        usuarioOpt.get().getDni(),
+                        accion,
+                        aclaracion,
+                        LocalDateTime.now());
+            }
+
+            String msg = switch (accion != null ? accion.trim().toUpperCase() : "") {
+                case "ENTRADA" -> "Entrada del turno registrada correctamente.";
+                case "SALIDA" -> "Salida del turno registrada correctamente.";
+                case "ACLARACION" -> "Aclaración del turno guardada correctamente.";
+                default -> "Registro de entrada, salida y aclaración actualizado correctamente.";
+            };
+            Map<String, Object> cuerpo = new LinkedHashMap<>();
+            cuerpo.put("mensaje", msg);
+            cuerpo.put("marcacionEntrada", actualizada.getMarcacionEntrada());
+            cuerpo.put("marcacionSalida", actualizada.getMarcacionSalida());
+            cuerpo.put("aclaracionTurno", actualizada.getAclaracionTurno());
+            return ResponseEntity.ok(cuerpo);
+        } catch (AccesoDenegadoException ex) {
+            return error(HttpStatus.FORBIDDEN, ex.getMessage());
         } catch (RecursoNoEncontradoException ex) {
             return error(HttpStatus.NOT_FOUND, ex.getMessage());
         } catch (ReglaNegocioException ex) {
@@ -130,6 +216,23 @@ public class TurnoApiController {
     }
 
     public record CambioTurno(
-            Long socioId, Long clienteId, Long servicioId, LocalDate fecha, LocalTime horaInicio, LocalTime horaFin) {
+            Long socioId,
+            Long clienteId,
+            Long servicioId,
+            LocalDate fecha,
+            LocalTime horaInicio,
+            LocalTime horaFin,
+            BigDecimal importeViatico,
+            BigDecimal importeSanatorio) {
+    }
+
+    public record AdicionalesTurno(BigDecimal importeViatico, BigDecimal importeSanatorio) {
+    }
+
+    public record MarcacionTurnoRequest(
+            String accion,
+            LocalDateTime marcacionEntrada,
+            LocalDateTime marcacionSalida,
+            String aclaracionTurno) {
     }
 }

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cuenta de usuario | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=3)}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container narrow-container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">CUENTAS</p>
+            <h1 th:text="${titulo}">Cuenta de usuario</h1>
+        </div>
+    </section>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+    <form class="content-card form-card" method="post" th:action="${accion}" th:object="${cuenta}">
+        <div class="field">
+            <label for="username">Usuario (para iniciar sesión)</label>
+            <input id="username" type="text" th:field="*{username}" maxlength="60" autocomplete="off">
+            <small class="field-error" th:errors="*{username}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="password" th:text="${edicion} ? 'Nueva contraseña (dejar en blanco para mantener la actual)' : 'Contraseña'">Contraseña</label>
+            <input id="password" type="password" th:field="*{password}" autocomplete="new-password">
+            <small class="field-error" th:errors="*{password}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" th:field="*{nombre}" maxlength="80">
+            <small class="field-error" th:errors="*{nombre}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="apellido">Apellido</label>
+            <input id="apellido" type="text" th:field="*{apellido}" maxlength="80">
+            <small class="field-error" th:errors="*{apellido}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="dni">DNI (7 u 8 dígitos numéricos)</label>
+            <input id="dni" type="text" th:field="*{dni}" inputmode="numeric" maxlength="8">
+            <small class="muted">Si el usuario tiene rol Socio (o solo ve sus propios turnos), se vinculará automáticamente con el socio que tenga este mismo DNI.</small>
+            <small class="field-error" th:errors="*{dni}"></small>
+        </div>
+        <div class="field field-spaced">
+            <label for="rolId">Rol de usuario</label>
+            <select id="rolId" th:field="*{rolId}">
+                <option th:each="r : ${roles}" th:value="${r.id}" th:text="${r.nombre}"></option>
+            </select>
+            <small class="field-error" th:errors="*{rolId}"></small>
+        </div>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Guardar</button>
+            <a class="button button-secondary" th:href="@{/cuentas}">Cancelar</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>
+

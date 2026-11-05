@@ -4,23 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel de gestión | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=2)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=5)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
 <main class="container">
     <section class="page-heading">
         <div>
-            <p class="eyebrow">PANEL OPERATIVO</p>
-            <h1>Resumen de la cooperativa</h1>
+            <p class="eyebrow" th:text="${vistaSocioPropia} ? 'AGENDA PERSONAL' : 'PANEL OPERATIVO'">PANEL OPERATIVO</p>
+            <h1 th:text="${vistaSocioPropia} ? 'Mis turnos asignados' : 'Resumen de la cooperativa'">Resumen de la cooperativa</h1>
             <p class="muted" th:text="${#temporals.format(fechaActual, 'EEEE d ''de'' MMMM')}">Fecha actual</p>
         </div>
-        <a class="button button-primary" th:href="@{/asignaciones/nueva}">＋ Asignar turno</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'ASIGNAR_TURNOS')}"
+           class="button button-primary" th:href="@{/asignaciones/nueva}">＋ Asignar turno</a>
     </section>
     <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
     <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
 
-    <section class="metrics" aria-label="Métricas del mes">
+    <section class="metrics" aria-label="Métricas del mes" th:if="${!vistaSocioPropia}">
         <article class="metric-card">
             <span class="metric-label">En servicio</span>
             <strong class="metric-value" th:text="${sociosEnServicio}">0</strong>
@@ -38,12 +39,70 @@
         </article>
     </section>
 
+    <section class="metrics compact-metrics" aria-label="Resumen personal" th:if="${vistaSocioPropia}">
+        <article class="metric-card metric-card-accent">
+            <span class="metric-label">Mis horas en el mes actual</span>
+            <strong class="metric-value" th:text="${#numbers.formatDecimal(horasMes, 1, 2)}">0,00</strong>
+            <span class="metric-note" th:if="${socioVinculado != null}"
+                  th:text="|Socio: ${socioVinculado.apellido}, ${socioVinculado.nombre} · DNI ${socioVinculado.dni}|">Socio vinculado</span>
+            <span class="metric-note" th:if="${socioVinculado == null}"
+                  th:text="|DNI ${usuarioActual != null ? usuarioActual.dni : ''} (sin legajo de socio asociado)|">Sin socio</span>
+        </article>
+    </section>
+
+    <section class="content-card today-shifts-card" aria-label="Turnos del día de hoy"
+             th:if="${vistaSocioPropia and turnosHoy != null and !#lists.isEmpty(turnosHoy)}">
+        <div class="today-shifts-header">
+            <div>
+                <p class="eyebrow">GUARDIA DEL DÍA</p>
+                <h2>Marcar entrada, salida o aclaración de hoy</h2>
+                <p class="muted">Registrá tu ingreso y egreso en el turno de hoy, y dejá una aclaración si llegaste tarde o hubo algún inconveniente.</p>
+            </div>
+        </div>
+        <div class="today-shifts-list">
+            <article class="today-shift-item" th:each="turno : ${turnosHoy}"
+                     th:attr="data-asistencia-id=${turno.id}">
+                <div class="today-shift-info">
+                    <strong class="today-shift-patient" th:text="${turno.cliente.nombrePaciente}">Paciente</strong>
+                    <span class="today-shift-meta"
+                          th:text="|${turno.cliente.domicilio} · Horario: ${#temporals.format(turno.horaInicio, 'HH:mm')} a ${#temporals.format(turno.horaFin, 'HH:mm')} (${#temporals.format(turno.fecha, 'dd/MM/yyyy')})|">Domicilio y horario</span>
+                </div>
+                <div class="marcacion-status-row">
+                    <span class="marcacion-pill is-ok js-quick-entrada-badge"
+                          th:hidden="${turno.marcacionEntrada == null}"
+                          th:text="${turno.marcacionEntrada != null ? '✓ Entrada: ' + #temporals.format(turno.marcacionEntrada, 'dd/MM HH:mm') : ''}"></span>
+                    <button type="button" class="button button-primary button-sm js-quick-entrada"
+                            th:hidden="${turno.marcacionEntrada != null}">▶ Marcar entrada</button>
+
+                    <span class="marcacion-pill is-ok js-quick-salida-badge"
+                          th:hidden="${turno.marcacionSalida == null}"
+                          th:text="${turno.marcacionSalida != null ? '✓ Salida: ' + #temporals.format(turno.marcacionSalida, 'dd/MM HH:mm') : ''}"></span>
+                    <button type="button" class="button button-secondary button-sm js-quick-salida"
+                            th:hidden="${turno.marcacionSalida != null}">⏹ Marcar salida</button>
+                </div>
+                <div class="field today-shift-note">
+                    <label th:for="|nota-turno-${turno.id}|">Aclaración del turno (opcional)</label>
+                    <textarea th:id="|nota-turno-${turno.id}|"
+                              class="marcacion-textarea js-quick-aclaracion"
+                              rows="2" maxlength="1000"
+                              placeholder="Escribí acá si llegaste tarde o si hubo algún inconveniente en el turno..."
+                              th:text="${turno.aclaracionTurno}"></textarea>
+                    <div class="today-shift-note-actions">
+                        <button type="button" class="button button-quiet button-sm js-quick-guardar-nota">Guardar aclaración</button>
+                        <span class="marcacion-inline-msg js-quick-msg" role="status" hidden></span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
     <section class="calendar-section content-card">
         <div class="calendar-heading">
             <div>
                 <p class="eyebrow">AGENDA DE SERVICIOS</p>
-                <h2>Calendario de cobertura</h2>
-                <p class="muted">Consultá turnos, domicilios y socios asignados. Hacé clic en un turno para ver el detalle o eliminarlo.</p>
+                <h2 th:text="${vistaSocioPropia} ? 'Mi calendario de cobertura' : 'Calendario de cobertura'">Calendario de cobertura</h2>
+                <p class="muted" th:if="${!vistaSocioPropia}">Consultá turnos, domicilios y socios asignados. Hacé clic en un turno para ver su registro de entrada/salida, aclaraciones o editarlo.</p>
+                <p class="muted" th:if="${vistaSocioPropia}">Consultá tus turnos asignados, pacientes, domicilios y horarios. Hacé clic en un turno para ver el detalle o marcar entrada, salida y aclaraciones el día del turno.</p>
             </div>
             <div class="calendar-controls">
                 <div class="calendar-navigation" aria-label="Navegar el calendario">
@@ -64,16 +123,30 @@
             </div>
         </div>
 
+        <div class="alert alert-info" id="socio-sin-turnos-banner"
+             th:if="${vistaSocioPropia and sinTurnosAsignados == true}"
+             role="status">
+            <strong>No tenés turnos asignados.</strong>
+            <span th:text="${socioVinculado == null} ? 'Tu cuenta aún no tiene coberturas registradas para tu DNI.' : 'Cuando la administración te asigne una cobertura, aparecerá en este calendario.'">Cuando la administración te asigne una cobertura, aparecerá en este calendario.</span>
+        </div>
+
         <div class="calendar-period-row">
             <h3 id="calendar-period" aria-live="polite">Cargando calendario…</h3>
-            <span class="calendar-legend"><i></i> Turno asignado</span>
+            <div class="calendar-period-meta">
+                <span class="calendar-empty-pill" id="socio-periodo-vacio"
+                      th:if="${vistaSocioPropia}"
+                      th:hidden="${sinTurnosAsignados != true}"
+                      role="status">No tenés turnos asignados en este período</span>
+                <span class="calendar-legend"><i></i> Turno asignado</span>
+            </div>
         </div>
         <div class="calendar-error" id="calendar-error" role="alert" hidden></div>
         <div class="alert alert-success" id="calendar-notice" role="status" hidden></div>
-        <div class="calendar-scroll" id="calendar-grid" aria-live="polite"></div>
+        <div class="calendar-scroll" id="calendar-grid" aria-live="polite"
+             th:attr="data-puede-modificar=${@seguridad.tienePermiso(usuarioActual, 'MODIFICAR_TURNOS')},data-puede-eliminar=${@seguridad.tienePermiso(usuarioActual, 'ELIMINAR_TURNOS')},data-es-admin=${@seguridad.esAdmin(usuarioActual)},data-usuario-dni=${usuarioActual != null ? usuarioActual.dni : ''},data-vista-socio=${vistaSocioPropia},data-sin-turnos-totales=${sinTurnosAsignados}"></div>
         <section class="calendar-detail" id="calendar-detail" aria-label="Detalle del turno" hidden></section>
 
-        <div class="availability-panels">
+        <div class="availability-panels" th:if="${!vistaSocioPropia}">
             <section class="availability-card availability-card-socio">
                 <div class="availability-heading">
                     <div>
@@ -101,19 +174,22 @@
         </div>
     </section>
 
-    <section class="content-card welcome-card">
+    <section class="content-card welcome-card" th:if="${!vistaSocioPropia}">
         <div>
             <p class="eyebrow">GESTIÓN DIARIA</p>
             <h2>La información operativa, en un solo lugar</h2>
             <p class="muted">Registrá una cobertura o consultá el retorno mensual de un socio.</p>
         </div>
         <div class="quick-links">
-            <a class="button button-secondary" th:href="@{/asignaciones/nueva}">Registrar asistencia</a>
-            <a class="button button-quiet" th:href="@{/liquidaciones}">Consultar retornos</a>
-            <a class="button button-quiet" th:href="@{/estadisticas}">Ver estadísticas</a>
+            <a th:if="${@seguridad.tienePermiso(usuarioActual, 'ASIGNAR_TURNOS')}"
+               class="button button-secondary" th:href="@{/asignaciones/nueva}">Registrar asistencia</a>
+            <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}"
+               class="button button-quiet" th:href="@{/liquidaciones}">Consultar retornos</a>
+            <a th:if="${@seguridad.tienePermiso(usuarioActual, 'VER_ESTADISTICAS')}"
+               class="button button-quiet" th:href="@{/estadisticas}">Ver estadísticas</a>
         </div>
     </section>
 </main>
-<script th:src="@{/js/calendario.js(v=2)}" defer></script>
+<script th:src="@{/js/calendario.js(v=5)}" defer></script>
 </body>
 </html>

@@ -11,6 +11,7 @@ import com.cooperativa.cuidado.servicio.ServicioDomicilio;
 import com.cooperativa.cuidado.servicio.ServicioDomicilioRepository;
 import com.cooperativa.cuidado.socio.Socio;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -19,7 +20,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
@@ -118,6 +118,8 @@ public class AsignacionController {
             asistencia.setFecha(formulario.getFecha());
             asistencia.setHoraInicio(formulario.getHoraInicio());
             asistencia.setHoraFin(formulario.getHoraFin());
+            asistencia.setImporteViatico(formulario.getImporteViatico());
+            asistencia.setImporteSanatorio(formulario.getImporteSanatorio());
             if (formulario.isRepetir()) {
                 List<LocalDate> fechas = CalculoRepeticion.fechas(
                         formulario.getFecha(), formulario.getUnidad(),

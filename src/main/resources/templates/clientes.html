@@ -15,7 +15,8 @@
             <h1>Clientes</h1>
             <p class="muted">Familias y pacientes que reciben el servicio.</p>
         </div>
-        <a class="button button-primary" th:href="@{/clientes/nuevo}">Nuevo cliente</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}"
+           class="button button-primary" th:href="@{/clientes/nuevo}">Nuevo cliente</a>
     </section>
     <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
     <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
@@ -23,25 +24,40 @@
         <div class="table-wrap">
             <table>
                 <thead>
-                <tr><th>Paciente</th><th>Familiar</th><th>Contacto</th><th>Domicilio</th><th>Acciones</th></tr>
+                <tr><th>Paciente</th><th>Familiar</th><th>Contacto</th><th>Domicilio / Ubicación</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                 <tr th:each="cliente : ${clientes}">
-                    <td th:text="${cliente.nombrePaciente}"></td>
+                    <td>
+                        <strong th:text="${cliente.nombrePaciente}"></strong>
+                        <div class="muted" style="font-size:0.82rem;"
+                             th:if="${cliente.dniPaciente != null and !#strings.isEmpty(cliente.dniPaciente)}"
+                             th:text="|DNI ${cliente.dniPaciente}|"></div>
+                    </td>
                     <td th:text="${cliente.nombreFamiliar}"></td>
-                    <td th:text="|${cliente.telefono} · ${cliente.correo}|"></td>
-                    <td th:text="${cliente.domicilio}"></td>
+                    <td th:text="|${cliente.telefono}${cliente.correo != null and !#strings.isEmpty(cliente.correo) ? ' · ' + cliente.correo : ''}|"></td>
+                    <td>
+                        <div th:text="${cliente.domicilio}"></div>
+                        <div class="muted" style="font-size:0.82rem;"
+                             th:if="${(cliente.ciudad != null and !#strings.isEmpty(cliente.ciudad)) or (cliente.localidad != null and !#strings.isEmpty(cliente.localidad)) or (cliente.codigoPostal != null and !#strings.isEmpty(cliente.codigoPostal))}"
+                             th:text="|${cliente.ciudad != null ? cliente.ciudad : ''}${cliente.localidad != null ? ', ' + cliente.localidad : ''}${cliente.codigoPostal != null ? ' (CP ' + cliente.codigoPostal + ')' : ''}|"></div>
+                    </td>
                     <td class="row-actions">
-                        <a class="button button-secondary" th:href="@{/clientes/{id}/editar(id=${cliente.id})}">Editar</a>
-                        <form method="post" th:action="@{/clientes/{id}/eliminar(id=${cliente.id})}"
+                        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}"
+                           class="button button-secondary" th:href="@{/clientes/{id}/editar(id=${cliente.id})}">Editar</a>
+                        <form th:if="${@seguridad.tienePermiso(usuarioActual, 'ELIMINAR_CLIENTES')}"
+                              method="post" th:action="@{/clientes/{id}/eliminar(id=${cliente.id})}"
                               data-confirm="¿Eliminar este cliente? También se borrarán sus servicios y turnos registrados.">
                             <button class="button button-danger" type="submit">Eliminar</button>
                         </form>
-                        <button class="button button-secondary" type="button" data-legajo-tipo="clientes"
+                        <button th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_LEGAJOS')}"
+                                class="button button-secondary" type="button" data-legajo-tipo="clientes"
                                 th:attr="data-legajo-id=${cliente.id},data-legajo-titulo=${cliente.nombrePaciente}">Legajo</button>
-                        <a class="button button-secondary" th:href="@{/clientes/{id}/historico/pdf(id=${cliente.id})}"
+                        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}"
+                           class="button button-secondary" th:href="@{/clientes/{id}/historico/pdf(id=${cliente.id})}"
                            title="Histórico completo de servicios en PDF">Histórico PDF</a>
-                        <a class="button button-secondary" th:href="@{/clientes/{id}/historico/excel(id=${cliente.id})}"
+                        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}"
+                           class="button button-secondary" th:href="@{/clientes/{id}/historico/excel(id=${cliente.id})}"
                            title="Histórico completo de servicios en Excel">Excel</a>
                     </td>
                 </tr>

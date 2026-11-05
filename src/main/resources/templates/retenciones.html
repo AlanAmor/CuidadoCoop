@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Retenciones de socios | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">MÓDULO FINANCIERO</p>
+            <h1>Retenciones a socios</h1>
+            <p class="muted">Registrá retenciones por socio y período con su motivo correspondiente. Al generar el recibo de retribución del período, se aplican y descuentan automáticamente.</p>
+        </div>
+        <a class="button button-secondary" th:href="@{/liquidaciones}">Ir a Recibos de Retribución</a>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <form class="content-card form-card" method="post" th:action="@{/retenciones}">
+        <h2 class="step-title">Nueva retención</h2>
+        <div class="form-grid">
+            <div class="field">
+                <label for="socioId">Socio</label>
+                <select id="socioId" name="socioId" required>
+                    <option value="">Seleccioná un socio</option>
+                    <option th:each="socio : ${socios}"
+                            th:value="${socio.id}"
+                            th:selected="${formSocioId != null and formSocioId == socio.id}"
+                            th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="periodo">Período a retener</label>
+                <input id="periodo" name="periodo" type="month"
+                       th:value="${formPeriodo != null ? formPeriodo : periodoActual}" required>
+            </div>
+            <div class="field">
+                <label for="tipo">Concepto en el recibo</label>
+                <select id="tipo" name="tipo" required>
+                    <option th:each="t : ${tiposRetencion}"
+                            th:value="${t}"
+                            th:data-detalle="${t.detallePorDefecto}"
+                            th:selected="${formTipo != null ? formTipo == t : t.name() == 'OTRAS_RETENCIONES'}"
+                            th:text="${t.etiquetaRecibo}"></option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-grid" style="margin-top: 14px;">
+            <div class="field" style="grid-column: span 2;">
+                <label for="motivo">Motivo / detalle de la retención</label>
+                <input id="motivo" name="motivo" type="text" maxlength="250" required
+                       placeholder="Ej: Retención por Incumplimiento Articulo 5 Reglamento Interno"
+                       th:value="${formMotivo != null ? formMotivo : 'Retención por Incumplimiento Articulo 5 Reglamento Interno'}">
+            </div>
+            <div class="field">
+                <label for="unidad">Unidad</label>
+                <input id="unidad" name="unidad" type="number" step="0.01" min="0.01"
+                       th:value="${formUnidad != null ? formUnidad : 1}" required>
+            </div>
+            <div class="field">
+                <label for="valorUnidad">Monto unitario ($)</label>
+                <input id="valorUnidad" name="valorUnidad" type="number" step="0.01" min="0.01"
+                       placeholder="Ej: 15000.00"
+                       th:value="${formValorUnidad}" required>
+            </div>
+        </div>
+        <p class="form-hint" id="preview-retencion">Podés cargar múltiples retenciones para el mismo socio y período (por ejemplo, Monotributo, Préstamo y varias Otras Retenciones).</p>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(socios)}">
+                Guardar retención
+            </button>
+        </div>
+    </form>
+
+    <form class="content-card filter-card" method="get" th:action="@{/retenciones}" style="margin-top: 22px;">
+        <div class="field">
+            <label for="socioFiltro">Filtrar por socio</label>
+            <select id="socioFiltro" name="socioFiltro">
+                <option value="">Todos los socios</option>
+                <option th:each="socio : ${socios}"
+                        th:value="${socio.id}"
+                        th:selected="${socioFiltro != null and socioFiltro == socio.id}"
+                        th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="periodoFiltro">Filtrar por período</label>
+            <input id="periodoFiltro" name="periodoFiltro" type="month" th:value="${periodoFiltro}">
+        </div>
+        <div class="form-actions" style="align-self: end;">
+            <button class="button button-secondary" type="submit">Filtrar</button>
+            <a class="button button-quiet" th:href="@{/retenciones}">Limpiar</a>
+        </div>
+    </form>
+
+    <section class="content-card table-card" style="margin-top: 18px;">
+        <h3>Retenciones registradas</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Período</th>
+                    <th>Socio</th>
+                    <th>Concepto</th>
+                    <th>Motivo / Detalle</th>
+                    <th>Unidad</th>
+                    <th>Valor unidad</th>
+                    <th>Total retenido</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${retenciones}">
+                    <td th:text="${r.periodo}">2026-04</td>
+                    <td th:text="|${r.socio.apellido}, ${r.socio.nombre}|">Socio</td>
+                    <td th:text="${r.tipo.etiquetaRecibo}">Concepto</td>
+                    <td th:text="${r.motivo}">Motivo</td>
+                    <td th:text="${#numbers.formatDecimal(r.unidad, 1, 2)}">1,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(r.valorUnidad, 1, 2)}|">$ 0,00</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(r.total, 1, 2)}|">$ 0,00</strong></td>
+                    <td>
+                        <form method="post" th:action="@{/retenciones/{id}/eliminar(id=${r.id})}"
+                              data-confirm="¿Eliminar esta retención?">
+                            <button class="button button-danger button-sm" type="submit">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(retenciones)}">
+                    <td colspan="8" class="empty-state">No hay retenciones registradas para el filtro seleccionado.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<script>
+(() => {
+    const tipoSel = document.getElementById("tipo");
+    const motivoInp = document.getElementById("motivo");
+    const unidadInp = document.getElementById("unidad");
+    const valorInp = document.getElementById("valorUnidad");
+    const preview = document.getElementById("preview-retencion");
+    const defaults = Array.from(tipoSel.options).map(o => o.dataset.detalle);
+
+    tipoSel.addEventListener("change", () => {
+        const opt = tipoSel.options[tipoSel.selectedIndex];
+        if (!motivoInp.value.trim() || defaults.includes(motivoInp.value.trim())) {
+            motivoInp.value = opt.dataset.detalle || "";
+        }
+    });
+
+    const actualizarTotal = () => {
+        const u = Number(unidadInp.value || 0);
+        const v = Number(valorInp.value || 0);
+        if (u > 0 && v > 0) {
+            const tot = (u * v).toLocaleString("es-AR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            preview.textContent = `Total a descontar en el recibo: $ ${tot}`;
+        } else {
+            preview.textContent = "Podés cargar múltiples retenciones para el mismo socio y período (por ejemplo, Monotributo, Préstamo y varias Otras Retenciones).";
+        }
+    };
+    unidadInp.addEventListener("input", actualizarTotal);
+    valorInp.addEventListener("input", actualizarTotal);
+})();
+</script>
+</body>
+</html>
+

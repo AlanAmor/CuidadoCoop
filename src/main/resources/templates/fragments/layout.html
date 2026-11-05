@@ -5,25 +5,37 @@
     <a class="brand" th:href="@{/}">Cuidado<span>Coop</span></a>
     <nav aria-label="Navegación principal">
         <a th:href="@{/}">Inicio</a>
-        <a th:href="@{/asignaciones/nueva}">Asignar turno</a>
-        <a th:href="@{/socios}">Socios</a>
-        <a th:href="@{/clientes}">Clientes</a>
-        <a th:href="@{/servicios}">Servicios</a>
-        <a th:href="@{/liquidaciones}">Liquidaciones</a>
-        <a th:href="@{/presupuestos}">Presupuestos</a>
-        <a th:href="@{/asistencias/historico}">Histórico</a>
-        <a th:href="@{/estadisticas}">Estadísticas</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'ASIGNAR_TURNOS')}" th:href="@{/asignaciones/nueva}">Asignar turno</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS')}" th:href="@{/socios}">Socios</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}" th:href="@{/clientes}">Clientes</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_SERVICIOS')}" th:href="@{/servicios}">Servicios</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones}">Liquidaciones</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones-familia}">Liquidación Familia</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/retenciones}">Retenciones</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}" th:href="@{/presupuestos}">Presupuestos</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}" th:href="@{/asistencias/historico}">Histórico</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'VER_ESTADISTICAS')}" th:href="@{/estadisticas}">Estadísticas</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_CUENTAS')}" th:href="@{/cuentas}">Cuentas</a>
     </nav>
+    <div class="header-session" th:if="${usuarioActual != null}">
+        <span class="session-badge"
+              th:text="|${usuarioActual.nombre} ${usuarioActual.apellido} (${usuarioActual.rol.nombre})|">Usuario</span>
+        <form method="post" th:action="@{/logout}" class="logout-form">
+            <button type="submit" class="button button-quiet button-sm">Salir</button>
+        </form>
+    </div>
     <script th:src="@{/js/confirmar.js}" defer></script>
     <script th:src="@{/js/legajo.js}" defer></script>
 </header>
 
-<section th:fragment="panelLegajo" class="content-card form-card legajo-panel">
+<section th:fragment="panelLegajo" class="content-card form-card legajo-panel"
+         th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_LEGAJOS')}">
     <h2 class="legajo-titulo">Legajo</h2>
     <div th:if="${legajoId == null}" class="muted">
         Guardá primero los datos para poder adjuntar archivos al legajo.
     </div>
-    <div th:if="${legajoId != null}" data-legajo-panel th:attr="data-tipo=${legajoTipo},data-id=${legajoId}">
+    <div th:if="${legajoId != null}" data-legajo-panel
+         th:attr="data-tipo=${legajoTipo},data-id=${legajoId},data-puede-eliminar=${@seguridad.tienePermiso(usuarioActual, 'ELIMINAR_LEGAJOS')}">
         <p class="muted">Facturas, presupuestos y otros documentos (PDF, JPG o PNG, hasta 10 MB cada uno). Los archivos se guardan al soltarlos, sin necesidad de presionar "Guardar".</p>
         <div class="legajo-zona" data-zona tabindex="0" role="button"
              aria-label="Soltar archivos acá o hacer clic para elegirlos">

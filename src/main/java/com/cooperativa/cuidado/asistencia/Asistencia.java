@@ -19,11 +19,13 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
@@ -78,7 +80,43 @@ public class Asistencia {
     @Column(precision = 12, scale = 2)
     private BigDecimal valorHoraSocioAplicado;
 
+    @PositiveOrZero(message = "El importe de viático no puede ser negativo")
+    @Digits(integer = 10, fraction = 2)
+    @Column(name = "importe_viatico", precision = 12, scale = 2)
+    private BigDecimal importeViatico;
+
+    @PositiveOrZero(message = "El importe de sanatorio no puede ser negativo")
+    @Digits(integer = 10, fraction = 2)
+    @Column(name = "importe_sanatorio", precision = 12, scale = 2)
+    private BigDecimal importeSanatorio;
+
+    @Column(name = "marcacion_entrada")
+    private LocalDateTime marcacionEntrada;
+
+    @Column(name = "marcacion_salida")
+    private LocalDateTime marcacionSalida;
+
+    @Size(max = 1000, message = "La aclaración del turno no puede superar los 1000 caracteres")
+    @Column(name = "aclaracion_turno", length = 1000)
+    private String aclaracionTurno;
+
     public Asistencia() {
+    }
+
+    /**
+     * Indica si la fecha consultada corresponde al día operativo del turno
+     * (incluye la mañana siguiente en turnos nocturnos que cruzan la medianoche).
+     */
+    public boolean esDiaDelTurno(LocalDate fechaReferencia) {
+        if (fecha == null || fechaReferencia == null) {
+            return false;
+        }
+        if (fechaReferencia.equals(fecha)) {
+            return true;
+        }
+        return horaInicio != null && horaFin != null
+                && horaFin.isBefore(horaInicio)
+                && fechaReferencia.equals(fecha.plusDays(1));
     }
 
     @PrePersist
@@ -198,5 +236,45 @@ public class Asistencia {
 
     public void setValorHoraAplicado(BigDecimal valorHoraAplicado) {
         this.valorHoraAplicado = valorHoraAplicado;
+    }
+
+    public BigDecimal getImporteViatico() {
+        return importeViatico;
+    }
+
+    public void setImporteViatico(BigDecimal importeViatico) {
+        this.importeViatico = importeViatico;
+    }
+
+    public BigDecimal getImporteSanatorio() {
+        return importeSanatorio;
+    }
+
+    public void setImporteSanatorio(BigDecimal importeSanatorio) {
+        this.importeSanatorio = importeSanatorio;
+    }
+
+    public LocalDateTime getMarcacionEntrada() {
+        return marcacionEntrada;
+    }
+
+    public void setMarcacionEntrada(LocalDateTime marcacionEntrada) {
+        this.marcacionEntrada = marcacionEntrada;
+    }
+
+    public LocalDateTime getMarcacionSalida() {
+        return marcacionSalida;
+    }
+
+    public void setMarcacionSalida(LocalDateTime marcacionSalida) {
+        this.marcacionSalida = marcacionSalida;
+    }
+
+    public String getAclaracionTurno() {
+        return aclaracionTurno;
+    }
+
+    public void setAclaracionTurno(String aclaracionTurno) {
+        this.aclaracionTurno = aclaracionTurno;
     }
 }

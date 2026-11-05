@@ -1,7 +1,9 @@
 package com.cooperativa.cuidado.web.asignacion;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -27,6 +29,12 @@ public class AsignacionForm {
 
     @NotNull(message = "Ingresá la hora de fin")
     private LocalTime horaFin;
+
+    @PositiveOrZero(message = "El importe de viático no puede ser negativo")
+    private BigDecimal importeViatico;
+
+    @PositiveOrZero(message = "El importe de sanatorio no puede ser negativo")
+    private BigDecimal importeSanatorio;
 
     private boolean repetir;
 
@@ -114,5 +122,21 @@ public class AsignacionForm {
 
     public void setHoraFin(LocalTime horaFin) {
         this.horaFin = horaFin;
+    }
+
+    public BigDecimal getImporteViatico() {
+        return importeViatico;
+    }
+
+    public void setImporteViatico(BigDecimal importeViatico) {
+        this.importeViatico = importeViatico;
+    }
+
+    public BigDecimal getImporteSanatorio() {
+        return importeSanatorio;
+    }
+
+    public void setImporteSanatorio(BigDecimal importeSanatorio) {
+        this.importeSanatorio = importeSanatorio;
     }
 }

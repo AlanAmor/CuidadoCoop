@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Roles y permisos | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=3)}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">CUENTAS Y PERMISOS</p>
+            <h1>Roles de usuario</h1>
+            <p class="muted">Creá nuevos roles y marcá en las casillas las funciones habilitadas para cada uno.</p>
+        </div>
+        <a class="button button-secondary" th:href="@{/cuentas}">Volver a cuentas</a>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <section class="content-card form-card role-create-card">
+        <h2 class="step-title">Crear nuevo rol</h2>
+        <form method="post" th:action="@{/cuentas/roles}">
+            <div class="field">
+                <label for="nombreNuevoRol">Nombre del rol</label>
+                <input id="nombreNuevoRol" name="nombre" type="text" maxlength="60" required placeholder="Ej.: SUPERVISOR o AUDITOR">
+            </div>
+
+            <div class="field field-spaced">
+                <span class="label-text">Modo de vista de calendario</span>
+                <label class="check-inline">
+                    <input type="checkbox" name="soloTurnosPropios" value="true">
+                    <span>Restringir únicamente a una vista de calendario con sus propios turnos asignados (vinculado por DNI)</span>
+                </label>
+            </div>
+
+            <div class="field field-spaced">
+                <span class="label-text">Funciones habilitadas para este rol</span>
+                <div class="permissions-grid">
+                    <label class="permission-item" th:each="permiso : ${permisosDisponibles}">
+                        <input type="checkbox" name="permisos" th:value="${permiso.name()}">
+                        <span th:text="${permiso.etiqueta}"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="button button-primary" type="submit">Crear rol</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="roles-list">
+        <article class="content-card form-card role-card" th:each="rol : ${roles}">
+            <div class="role-card-header">
+                <div>
+                    <h2 class="step-title" th:text="${rol.nombre}">ROL</h2>
+                    <span class="muted" th:text="|Cuentas asignadas: ${usos[rol.id]}|">0</span>
+                    <span class="badge" th:if="${rol.sistema}">Rol base del sistema</span>
+                </div>
+                <form th:if="${!rol.sistema}" method="post" th:action="@{/cuentas/roles/{id}/eliminar(id=${rol.id})}"
+                      data-confirm="¿Eliminar este rol?">
+                    <button class="button button-danger" type="submit"
+                            th:disabled="${usos[rol.id] > 0}"
+                            th:title="${usos[rol.id] > 0} ? 'No se puede eliminar mientras tenga cuentas asociadas' : null">Eliminar rol</button>
+                </form>
+            </div>
+
+            <div th:if="${#strings.equalsIgnoreCase(rol.nombre, 'ADMIN')}" class="muted">
+                El rol <strong>ADMIN</strong> tiene acceso total a todas las funciones del sistema de forma permanente.
+            </div>
+
+            <form th:if="${!#strings.equalsIgnoreCase(rol.nombre, 'ADMIN')}"
+                  method="post" th:action="@{/cuentas/roles/{id}(id=${rol.id})}">
+                <div class="field" th:if="${!rol.sistema}">
+                    <label th:for="|nombre-${rol.id}|">Nombre del rol</label>
+                    <input th:id="|nombre-${rol.id}|" type="text" name="nombre" maxlength="60" required th:value="${rol.nombre}">
+                </div>
+                <input th:if="${rol.sistema}" type="hidden" name="nombre" th:value="${rol.nombre}">
+
+                <div class="field field-spaced">
+                    <span class="label-text">Modo de vista de calendario</span>
+                    <label class="check-inline">
+                        <input type="checkbox" name="soloTurnosPropios" value="true" th:checked="${rol.soloTurnosPropios}">
+                        <span>Restringir únicamente a una vista de calendario con sus propios turnos asignados (vinculado por DNI)</span>
+                    </label>
+                </div>
+
+                <div class="field field-spaced">
+                    <span class="label-text">Funciones habilitadas</span>
+                    <div class="permissions-grid">
+                        <label class="permission-item" th:each="permiso : ${permisosDisponibles}">
+                            <input type="checkbox" name="permisos" th:value="${permiso.name()}"
+                                   th:checked="${rol.permisos.contains(permiso)}">
+                            <span th:text="${permiso.etiqueta}"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button class="button button-primary" type="submit">Guardar cambios del rol</button>
+                </div>
+            </form>
+        </article>
+    </section>
+</main>
+</body>
+</html>
+

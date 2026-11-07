@@ -92,7 +92,17 @@ public class TurnoApiController {
                         servicio.getId(),
                         servicio.getTipoServicio().getNombre(),
                         servicio.getValorHora(),
-                        servicio.getValorHoraSocio()))
+                        servicio.getEfectivoSocioSemanaMenos12(),
+                        servicio.getEfectivoClienteSemanaMas12(),
+                        servicio.getEfectivoClienteFindeMenos12(),
+                        servicio.getEfectivoClienteFindeMas12(),
+                        servicio.getEfectivoClienteFeriadoMenos12(),
+                        servicio.getEfectivoClienteFeriadoMas12(),
+                        servicio.getEfectivoSocioSemanaMas12(),
+                        servicio.getEfectivoSocioFindeMenos12(),
+                        servicio.getEfectivoSocioFindeMas12(),
+                        servicio.getEfectivoSocioFeriadoMenos12(),
+                        servicio.getEfectivoSocioFeriadoMas12()))
                 .toList();
     }
 
@@ -127,6 +137,7 @@ public class TurnoApiController {
             datos.setFecha(cambio.fecha());
             datos.setHoraInicio(cambio.horaInicio());
             datos.setHoraFin(cambio.horaFin());
+            datos.setFeriadoNacional(cambio.feriadoNacional());
             datos.setImporteViatico(cambio.importeViatico());
             datos.setImporteSanatorio(cambio.importeSanatorio());
             asignacionService.modificar(id, datos);
@@ -223,7 +234,8 @@ public class TurnoApiController {
             LocalTime horaInicio,
             LocalTime horaFin,
             BigDecimal importeViatico,
-            BigDecimal importeSanatorio) {
+            BigDecimal importeSanatorio,
+            Boolean feriadoNacional) {
     }
 
     public record AdicionalesTurno(BigDecimal importeViatico, BigDecimal importeSanatorio) {

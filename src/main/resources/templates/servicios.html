@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Servicios | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=6)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
@@ -12,10 +12,11 @@
     <section class="page-heading">
         <div>
             <p class="eyebrow">GESTIÓN</p>
-            <h1>Servicios</h1>
-            <p class="muted">Definí cada tipo de servicio con lo que se cobra al cliente y lo que se paga al socio por hora.</p>
+            <h1>Servicios y cuadro tarifario</h1>
+            <p class="muted">Definí para cada servicio los valores por hora de cliente y socio según tramo horario (menos de 12 hs o 12 hs o más) y tipo de día (semana, fin de semana o feriado nacional).</p>
         </div>
         <div class="quick-links">
+            <a class="button button-secondary" th:href="@{/feriados}">Feriados nacionales</a>
             <a class="button button-secondary" th:href="@{/tipos-servicio}">Tipos de servicio</a>
             <a class="button button-primary" th:href="@{/servicios/nuevo}">Nuevo servicio</a>
         </div>
@@ -26,13 +27,50 @@
         <div class="table-wrap">
             <table>
                 <thead>
-                <tr><th>Tipo</th><th>Cobro al cliente / hora</th><th>Pago al socio / hora</th><th>Acciones</th></tr>
+                <tr>
+                    <th>Servicio</th>
+                    <th>Cobro al cliente ($ / hora)</th>
+                    <th>Pago al socio ($ / hora)</th>
+                    <th>Acciones</th>
+                </tr>
                 </thead>
                 <tbody>
                 <tr th:each="servicio : ${servicios}">
-                    <td th:text="${servicio.tipoServicio.etiqueta}"></td>
-                    <td th:text="|$ ${#numbers.formatDecimal(servicio.valorHora, 1, 'POINT', 2, 'COMMA')}|"></td>
-                    <td th:text="${servicio.valorHoraSocio != null} ? |$ ${#numbers.formatDecimal(servicio.valorHoraSocio, 1, 'POINT', 2, 'COMMA')}| : 'Sin definir'"></td>
+                    <td>
+                        <strong th:text="${servicio.tipoServicio.etiqueta}"></strong>
+                    </td>
+                    <td>
+                        <div class="tariff-mini-grid">
+                            <div>
+                                <span class="tariff-mini-label">Semana (&lt;12h / &ge;12h):</span>
+                                <strong th:text="|$ ${#numbers.formatDecimal(servicio.valorHora, 1, 'POINT', 2, 'COMMA')} / $ ${#numbers.formatDecimal(servicio.efectivoClienteSemanaMas12, 1, 'POINT', 2, 'COMMA')}|"></strong>
+                            </div>
+                            <div>
+                                <span class="tariff-mini-label">Finde (&lt;12h / &ge;12h):</span>
+                                <strong th:text="|$ ${#numbers.formatDecimal(servicio.efectivoClienteFindeMenos12, 1, 'POINT', 2, 'COMMA')} / $ ${#numbers.formatDecimal(servicio.efectivoClienteFindeMas12, 1, 'POINT', 2, 'COMMA')}|"></strong>
+                            </div>
+                            <div>
+                                <span class="tariff-mini-label">Feriado (&lt;12h / &ge;12h):</span>
+                                <strong th:text="|$ ${#numbers.formatDecimal(servicio.efectivoClienteFeriadoMenos12, 1, 'POINT', 2, 'COMMA')} / $ ${#numbers.formatDecimal(servicio.efectivoClienteFeriadoMas12, 1, 'POINT', 2, 'COMMA')}|"></strong>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="tariff-mini-grid">
+                            <div>
+                                <span class="tariff-mini-label">Semana (&lt;12h / &ge;12h):</span>
+                                <strong th:text="|$ ${#numbers.formatDecimal(servicio.efectivoSocioSemanaMenos12, 1, 'POINT', 2, 'COMMA')} / $ ${#numbers.formatDecimal(servicio.efectivoSocioSemanaMas12, 1, 'POINT', 2, 'COMMA')}|"></strong>
+                            </div>
+                            <div>
+                                <span class="tariff-mini-label">Finde (&lt;12h / &ge;12h):</span>
+                                <strong th:text="|$ ${#numbers.formatDecimal(servicio.efectivoSocioFindeMenos12, 1, 'POINT', 2, 'COMMA')} / $ ${#numbers.formatDecimal(servicio.efectivoSocioFindeMas12, 1, 'POINT', 2, 'COMMA')}|"></strong>
+                            </div>
+                            <div>
+                                <span class="tariff-mini-label">Feriado (&lt;12h / &ge;12h):</span>
+                                <strong th:text="|$ ${#numbers.formatDecimal(servicio.efectivoSocioFeriadoMenos12, 1, 'POINT', 2, 'COMMA')} / $ ${#numbers.formatDecimal(servicio.efectivoSocioFeriadoMas12, 1, 'POINT', 2, 'COMMA')}|"></strong>
+                            </div>
+                        </div>
+                    </td>
                     <td class="row-actions">
                         <a class="button button-secondary" th:href="@{/servicios/{id}/editar(id=${servicio.id})}">Editar</a>
                         <form method="post" th:action="@{/servicios/{id}/eliminar(id=${servicio.id})}"

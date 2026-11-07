@@ -149,7 +149,8 @@ class LiquidacionFamiliaWebTest {
     @Test
     void emisionConDosCuidadoresExportaExcelYPdfRespetandoFormatoYCriteriosVisuales() throws Exception {
         // Subtotal = 20*4000 + 10*4000 = 120000.00
-        // IVA 21% = 25200.00 | Impuestos = 5800.00 -> Total Mensual / Saldo = 151000.00
+        // IVA 21% = 25200.00 -> Subtotal + IVA = 145200.00
+        // Impuestos (1.2% de 145200.00) = 1742.40 -> Total Mensual / Saldo = 146942.40
         // Criterios visuales (3.5%, 5%, 4%) NO alteran ningún total monetario
         mockMvc.perform(post("/liquidaciones-familia")
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
@@ -167,7 +168,6 @@ class LiquidacionFamiliaWebTest {
                         .param("cuidadorHoras", "20.00", "10.00")
                         .param("cuidadorValorHora", "4000.00", "4000.00")
                         .param("porcentajeIva", "21")
-                        .param("importeImpuestos", "5800.00")
                         .param("variacionIpcSalud", "3.5")
                         .param("transportePublico", "5")
                         .param("aumentoParitaria", "4"))
@@ -179,9 +179,9 @@ class LiquidacionFamiliaWebTest {
 
         assertThat(liq.getSubtotal()).isEqualByComparingTo("120000.00");
         assertThat(liq.getImporteIva()).isEqualByComparingTo("25200.00");
-        assertThat(liq.getImporteImpuestos()).isEqualByComparingTo("5800.00");
-        assertThat(liq.getTotalMensual()).isEqualByComparingTo("151000.00");
-        assertThat(liq.getSaldoATransferir()).isEqualByComparingTo("151000.00");
+        assertThat(liq.getImporteImpuestos()).isEqualByComparingTo("1742.40");
+        assertThat(liq.getTotalMensual()).isEqualByComparingTo("146942.40");
+        assertThat(liq.getSaldoATransferir()).isEqualByComparingTo("146942.40");
 
         byte[] pdfBytes = mockMvc.perform(get("/liquidaciones-familia/{id}/pdf", liq.getId()))
                 .andExpect(status().isOk())
@@ -207,7 +207,7 @@ class LiquidacionFamiliaWebTest {
             assertThat(sh.getRow(3).getCell(1).getStringCellValue()).isEqualTo("Nélida Beatriz Gatti");
             assertThat(sh.getRow(4).getCell(1).getStringCellValue()).isEqualTo("DNI 5432109");
             assertThat(sh.getRow(5).getCell(1).getStringCellValue()).isEqualTo("Urquiza 2450");
-            assertThat(sh.getRow(6).getCell(1).getStringCellValue()).isEqualTo("Santa Fe, Santa Fe, CP 3000.");
+            assertThat(sh.getRow(6).getCell(1).getStringCellValue()).isEqualTo("Santa Fe, Santa Fe, CP 3000");
             assertThat(sh.getRow(7).getCell(1).getStringCellValue()).isEqualTo("Contacto: 3425112233");
             assertThat(sh.getRow(7).getCell(3).getStringCellValue()).isEqualTo(" PERIODO MAYO 2026");
 
@@ -219,9 +219,9 @@ class LiquidacionFamiliaWebTest {
             // Con 2 filas (delta = -2), SUBTOTAL queda en fila índice 12
             assertThat(sh.getRow(12).getCell(4).getNumericCellValue()).isEqualTo(120000.0);
             assertThat(sh.getRow(13).getCell(4).getNumericCellValue()).isEqualTo(25200.0);
-            assertThat(sh.getRow(14).getCell(4).getNumericCellValue()).isEqualTo(5800.0);
-            assertThat(sh.getRow(15).getCell(4).getNumericCellValue()).isEqualTo(151000.0);
-            assertThat(sh.getRow(16).getCell(4).getNumericCellValue()).isEqualTo(151000.0);
+            assertThat(sh.getRow(14).getCell(4).getNumericCellValue()).isEqualTo(1742.4);
+            assertThat(sh.getRow(15).getCell(4).getNumericCellValue()).isEqualTo(146942.4);
+            assertThat(sh.getRow(16).getCell(4).getNumericCellValue()).isEqualTo(146942.4);
 
             assertThat(sh.getRow(19).getCell(1).getStringCellValue()).isEqualTo("Variacion de IPC Salud: 3,5%");
             assertThat(sh.getRow(20).getCell(1).getStringCellValue()).isEqualTo("Transporte Publico: 5%");
@@ -240,17 +240,18 @@ class LiquidacionFamiliaWebTest {
                         .param("cuidadorHoras", "10", "10", "10", "10", "10", "10")
                         .param("cuidadorValorHora", "4500", "4500", "4500", "4500", "4500", "4500")
                         .param("porcentajeIva", "10.5")
-                        .param("importeImpuestos", "0")
                         .param("variacionIpcSalud", "0")
                         .param("transportePublico", "0")
                         .param("aumentoParitaria", "0"))
                 .andExpect(status().is3xxRedirection());
 
         LiquidacionFamilia liq = liquidacionFamiliaRepository.findAll().get(0);
-        // 6 * 45000 = 270000 | IVA 10.5% = 28350 -> Total = 298350
+        // 6 * 45000 = 270000 | IVA 10.5% = 28350 -> Subtotal + IVA = 298350
+        // Impuestos 1.2% = 3580.20 -> Total = 301930.20
         assertThat(liq.getSubtotal()).isEqualByComparingTo("270000.00");
         assertThat(liq.getImporteIva()).isEqualByComparingTo("28350.00");
-        assertThat(liq.getTotalMensual()).isEqualByComparingTo("298350.00");
+        assertThat(liq.getImporteImpuestos()).isEqualByComparingTo("3580.20");
+        assertThat(liq.getTotalMensual()).isEqualByComparingTo("301930.20");
 
         byte[] xlsxBytes = mockMvc.perform(get("/liquidaciones-familia/{id}/excel", liq.getId()))
                 .andExpect(status().isOk())
@@ -263,7 +264,8 @@ class LiquidacionFamiliaWebTest {
             assertThat(sh.getRow(15).getCell(1).getStringCellValue()).isEqualTo("Florencia");
             // Con 6 filas (delta = +2), SUBTOTAL queda en fila índice 16
             assertThat(sh.getRow(16).getCell(4).getNumericCellValue()).isEqualTo(270000.0);
-            assertThat(sh.getRow(20).getCell(4).getNumericCellValue()).isEqualTo(298350.0);
+            assertThat(sh.getRow(18).getCell(4).getNumericCellValue()).isEqualTo(3580.2);
+            assertThat(sh.getRow(20).getCell(4).getNumericCellValue()).isEqualTo(301930.2);
         }
 
         mockMvc.perform(get("/liquidaciones-familia/{id}/pdf", liq.getId()))
@@ -281,7 +283,7 @@ class LiquidacionFamiliaWebTest {
         s.setCodigoPostal("3000");
         s.setTelefono("3425000000");
         s.setCorreo(dni + "@coop.com");
-        s.setCbu("0000003100000000000000");
+        s.setCbu("00000031000000" + dni);
         s.setEstado(EstadoSocio.ACTIVO_EN_SERVICIO);
         s.setEspecialidad(Especialidad.CUIDADOR);
         return socioRepository.save(s);

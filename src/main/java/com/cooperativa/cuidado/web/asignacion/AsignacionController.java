@@ -7,8 +7,11 @@ import com.cooperativa.cuidado.cliente.service.ClienteService;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
 import com.cooperativa.cuidado.exception.ReglaNegocioException;
+import com.cooperativa.cuidado.feriado.FeriadoNacional;
+import com.cooperativa.cuidado.feriado.service.FeriadoNacionalService;
 import com.cooperativa.cuidado.servicio.ServicioDomicilio;
 import com.cooperativa.cuidado.servicio.ServicioDomicilioRepository;
+import com.cooperativa.cuidado.servicio.TramoHorarioTarifa;
 import com.cooperativa.cuidado.socio.Socio;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -22,7 +25,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.TextStyle;
@@ -31,6 +37,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 public class AsignacionController {
@@ -39,16 +47,19 @@ public class AsignacionController {
     private final ServicioDomicilioRepository servicioRepository;
     private final AsignacionService asignacionService;
     private final AsistenciaService asistenciaService;
+    private final FeriadoNacionalService feriadoService;
 
     public AsignacionController(
             ClienteService clienteService,
             ServicioDomicilioRepository servicioRepository,
             AsignacionService asignacionService,
-            AsistenciaService asistenciaService) {
+            AsistenciaService asistenciaService,
+            FeriadoNacionalService feriadoService) {
         this.clienteService = clienteService;
         this.servicioRepository = servicioRepository;
         this.asignacionService = asignacionService;
         this.asistenciaService = asistenciaService;
+        this.feriadoService = feriadoService;
     }
 
     @PostMapping("/asistencias/{id}/eliminar")
@@ -70,10 +81,14 @@ public class AsignacionController {
             Model model) {
         if (!model.containsAttribute("asignacion")) {
             AsignacionForm form = new AsignacionForm();
-            form.setFecha(fecha != null ? fecha : LocalDate.now());
+            LocalDate fechaEfectiva = fecha != null ? fecha : LocalDate.now();
+            form.setFecha(fechaEfectiva);
             form.setHoraInicio(horaInicio);
             form.setHoraFin(horaFin);
             form.setRepetir(repetir);
+            if (!repetir) {
+                form.setFeriadoNacional(feriadoService.esFeriado(fechaEfectiva));
+            }
             if (unidad != null) {
                 form.setUnidad(unidad);
             }
@@ -128,6 +143,11 @@ public class AsignacionController {
                 redirectAttributes.addFlashAttribute("mensajeExito",
                         "Se asignaron " + creados + " turnos del cuidado fijo. Podés editar o eliminar cada uno desde el calendario.");
             } else {
+                if (formulario.isFeriadoNacionalEspecificado()) {
+                    asistencia.setFeriadoNacional(Boolean.TRUE.equals(formulario.getFeriadoNacional()));
+                } else {
+                    asistencia.setFeriadoNacional(formulario.getFeriadoNacional());
+                }
                 asignacionService.asignar(asistencia);
                 redirectAttributes.addFlashAttribute("mensajeExito", "El turno se asignó correctamente.");
             }
@@ -156,11 +176,31 @@ public class AsignacionController {
         if (form.getFecha() == null || form.getHoraInicio() == null || form.getHoraFin() == null) {
             return;
         }
+        if (!form.getHoraInicio().equals(form.getHoraFin())) {
+            Duration dur = Duration.between(form.getHoraInicio(), form.getHoraFin());
+            if (dur.isNegative()) {
+                dur = dur.plusDays(1);
+            }
+            BigDecimal horasTurno = BigDecimal.valueOf(dur.toSeconds())
+                    .divide(BigDecimal.valueOf(3600), 2, RoundingMode.HALF_UP);
+            model.addAttribute("horasTurnoCalculadas", horasTurno);
+            model.addAttribute("tramoTurnoCalculado", TramoHorarioTarifa.desdeHoras(horasTurno));
+            boolean esFinde = form.getFecha().getDayOfWeek() == DayOfWeek.SATURDAY
+                    || form.getFecha().getDayOfWeek() == DayOfWeek.SUNDAY;
+            model.addAttribute("esFinDeSemana", esFinde);
+        }
+        feriadoService.buscarPorFecha(form.getFecha())
+                .ifPresent(f -> model.addAttribute("feriadoDetectado", f));
         try {
             if (form.isRepetir()) {
                 List<LocalDate> fechas = CalculoRepeticion.fechas(
                         form.getFecha(), form.getUnidad(), form.getCantidad(), form.getDias());
                 model.addAttribute("fechasSerie", fechas);
+                Set<LocalDate> conjuntoFechas = Set.copyOf(fechas);
+                List<FeriadoNacional> feriadosSerie = feriadoService.listar().stream()
+                        .filter(f -> conjuntoFechas.contains(f.getFecha()))
+                        .collect(Collectors.toList());
+                model.addAttribute("feriadosSerie", feriadosSerie);
                 model.addAttribute("sociosDisponibles", asistenciaService.listarSociosDisponiblesEnFechas(
                         fechas, form.getHoraInicio(), form.getHoraFin()));
             } else {

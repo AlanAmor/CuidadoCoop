@@ -2,6 +2,8 @@ package com.cooperativa.cuidado.web.documento;
 
 import com.cooperativa.cuidado.documento.AlicuotaIva;
 import com.cooperativa.cuidado.documento.service.PdfExportService;
+import com.cooperativa.cuidado.servicio.CategoriaDiaTarifa;
+import com.cooperativa.cuidado.servicio.TramoHorarioTarifa;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -45,8 +47,11 @@ public class ExportacionController {
             @RequestParam Long servicioId,
             @RequestParam BigDecimal horas,
             @RequestParam(defaultValue = "SIN_IVA") AlicuotaIva alicuotaIva,
-            @RequestParam(defaultValue = "false") boolean pagoEfectivo) {
-        byte[] archivo = pdfExportService.generarPresupuesto(clienteId, servicioId, horas, alicuotaIva, pagoEfectivo);
+            @RequestParam(defaultValue = "false") boolean pagoEfectivo,
+            @RequestParam(defaultValue = "DIA_SEMANA") CategoriaDiaTarifa categoriaDia,
+            @RequestParam(defaultValue = "MENOS_DE_12_HS") TramoHorarioTarifa tramoHorario) {
+        byte[] archivo = pdfExportService.generarPresupuesto(
+                clienteId, servicioId, horas, alicuotaIva, pagoEfectivo, categoriaDia, tramoHorario);
         return descarga(archivo, PDF, "presupuesto-" + clienteId + "-" + servicioId + ".pdf");
     }
 

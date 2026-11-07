@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Asignar turno | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=6)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
@@ -83,13 +83,23 @@
             <strong th:text="${#temporals.format(asignacion.fecha, 'dd/MM/yyyy')}"></strong>
             de <strong th:text="${asignacion.horaInicio}"></strong>
             a <strong th:text="${asignacion.horaFin}"></strong>
+            <th:block th:if="${horasTurnoCalculadas != null}">
+                · <strong th:text="|${#numbers.formatDecimal(horasTurnoCalculadas, 1, 'POINT', 2, 'COMMA')} hs|"></strong>
+                (<span th:text="${tramoTurnoCalculado.etiqueta}"></span>)
+            </th:block>
         </p>
         <p class="muted" th:if="${asignacion.repetir and fechasSerie != null}">
             Cuidado fijo: <strong th:text="${#lists.size(fechasSerie)}"></strong> turnos, del
             <strong th:text="${#temporals.format(fechasSerie[0], 'dd/MM/yyyy')}"></strong> al
             <strong th:text="${#temporals.format(fechasSerie[#lists.size(fechasSerie) - 1], 'dd/MM/yyyy')}"></strong>.
-            Se crean todos juntos o ninguno.
+            Se crean todos juntos o ninguno. Cada fecha aplicará automáticamente su tarifa de día de semana, fin de semana o feriado nacional.
         </p>
+        <div class="alert alert-info" th:if="${asignacion.repetir and feriadosSerie != null and !#lists.isEmpty(feriadosSerie)}"
+             style="margin-bottom: 14px;">
+            <strong>Feriados nacionales detectados en la serie:</strong>
+            <span th:each="f, st : ${feriadosSerie}"
+                  th:text="|${#temporals.format(f.fecha, 'dd/MM/yyyy')} (${f.descripcion})${!st.last ? '; ' : '.'}|"></span>
+        </div>
         <input type="hidden" name="fecha" th:value="${asignacion.fecha}">
         <input type="hidden" name="horaInicio" th:value="${asignacion.horaInicio}">
         <input type="hidden" name="horaFin" th:value="${asignacion.horaFin}">
@@ -161,15 +171,49 @@
 
         <div class="field">
             <label for="servicioDomicilioId">Servicio</label>
-            <select id="servicioDomicilioId" th:field="*{servicioDomicilioId}" required>
+            <select id="servicioDomicilioId" th:field="*{servicioDomicilioId}" required
+                    th:attr="data-es-finde=${esFinDeSemana != null and esFinDeSemana},
+                             data-es-mas12=${tramoTurnoCalculado != null and tramoTurnoCalculado.name() == 'DOCE_HS_O_MAS'},
+                             data-es-serie=${asignacion.repetir}">
                 <option value="">Seleccioná un servicio</option>
                 <option th:each="servicio : ${servicios}"
                         th:value="${servicio.id}"
-                        th:text="|${servicio.tipoServicio.etiqueta} · cliente $ ${servicio.valorHora}/h · socio $ ${servicio.valorHoraSocio}/h|"></option>
+                        th:attr="data-nombre=${servicio.tipoServicio.etiqueta},
+                                 data-cli-sem-m12=${servicio.valorHora},
+                                 data-cli-sem-p12=${servicio.efectivoClienteSemanaMas12},
+                                 data-cli-fin-m12=${servicio.efectivoClienteFindeMenos12},
+                                 data-cli-fin-p12=${servicio.efectivoClienteFindeMas12},
+                                 data-cli-fer-m12=${servicio.efectivoClienteFeriadoMenos12},
+                                 data-cli-fer-p12=${servicio.efectivoClienteFeriadoMas12},
+                                 data-soc-sem-m12=${servicio.efectivoSocioSemanaMenos12},
+                                 data-soc-sem-p12=${servicio.efectivoSocioSemanaMas12},
+                                 data-soc-fin-m12=${servicio.efectivoSocioFindeMenos12},
+                                 data-soc-fin-p12=${servicio.efectivoSocioFindeMas12},
+                                 data-soc-fer-m12=${servicio.efectivoSocioFeriadoMenos12},
+                                 data-soc-fer-p12=${servicio.efectivoSocioFeriadoMas12}"
+                        th:text="|${servicio.tipoServicio.etiqueta} · base cliente $ ${servicio.valorHora}/h · base socio $ ${servicio.efectivoSocioSemanaMenos12}/h|"></option>
             </select>
             <small class="field-error" th:if="${#fields.hasErrors('servicioDomicilioId')}" th:errors="*{servicioDomicilioId}"></small>
+            <small class="muted" id="tarifa-preview-hint"></small>
             <small class="muted" th:if="${#lists.isEmpty(servicios)}">Todavía no hay servicios registrados.</small>
         </div>
+
+        <fieldset class="repeat-box" th:if="${!asignacion.repetir}">
+            <legend>Condición tarifaria del día</legend>
+            <input type="hidden" name="feriadoNacionalEspecificado" value="true">
+            <label class="check-inline">
+                <input type="checkbox" id="chk-feriado-nacional" name="feriadoNacional" value="true"
+                       th:checked="${asignacion.feriadoNacional != null and asignacion.feriadoNacional}">
+                Es feriado nacional (aplicar valor hora de feriado a cliente y socio)
+            </label>
+            <p class="form-hint" th:if="${feriadoDetectado != null}">
+                Esta fecha figura en el listado de <a th:href="@{/feriados}">Feriados nacionales</a> como
+                <strong th:text="${feriadoDetectado.descripcion}"></strong> (se marcó automáticamente; podés desmarcarla si no corresponde).
+            </p>
+            <p class="form-hint" th:if="${feriadoDetectado == null}">
+                Si la fecha es feriado nacional y aún no la cargaste en <a th:href="@{/feriados}">Feriados nacionales</a>, podés marcar esta casilla directamente.
+            </p>
+        </fieldset>
 
         <fieldset class="repeat-box">
             <legend>Adicionales para el recibo del socio (opcional)</legend>
@@ -225,6 +269,54 @@
     };
     bindToggle("chk-viatico", "importeViatico");
     bindToggle("chk-sanatorio", "importeSanatorio");
+
+    const srvSelect = document.getElementById("servicioDomicilioId");
+    const chkFeriado = document.getElementById("chk-feriado-nacional");
+    const previewHint = document.getElementById("tarifa-preview-hint");
+    const fmtAr = val => Number(val || 0).toLocaleString("es-AR", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const updateTarifaPreview = () => {
+        if (!srvSelect || !previewHint) return;
+        const esFinde = srvSelect.dataset.esFinde === "true";
+        const esMas12 = srvSelect.dataset.esMas12 === "true";
+        const esSerie = srvSelect.dataset.esSerie === "true";
+        const esFer = Boolean(chkFeriado && chkFeriado.checked);
+        const tramoTxt = esMas12 ? "12 hs o más" : "menos de 12 hs";
+
+        if (!esSerie) {
+            Array.from(srvSelect.options).forEach(opt => {
+                if (!opt.value || !opt.dataset.nombre) return;
+                const suf = esMas12 ? "p12" : "m12";
+                const cat = esFer ? "fer" : (esFinde ? "fin" : "sem");
+                const cli = opt.dataset[`cli${cat.charAt(0).toUpperCase() + cat.slice(1)}${suf.charAt(0).toUpperCase() + suf.slice(1)}`];
+                const soc = opt.dataset[`soc${cat.charAt(0).toUpperCase() + cat.slice(1)}${suf.charAt(0).toUpperCase() + suf.slice(1)}`];
+                if (cli !== undefined && soc !== undefined) {
+                    opt.textContent = `${opt.dataset.nombre} · cliente $ ${fmtAr(cli)}/h · socio $ ${fmtAr(soc)}/h`;
+                }
+            });
+        }
+
+        const selOpt = srvSelect.selectedOptions && srvSelect.selectedOptions[0];
+        if (!selOpt || !selOpt.value) {
+            previewHint.textContent = "";
+            return;
+        }
+        if (esSerie) {
+            const suf = esMas12 ? "P12" : "M12";
+            previewHint.textContent = `Tarifas (${tramoTxt}): Semana cliente $ ${fmtAr(selOpt.dataset["cliSem" + suf])}/h · socio $ ${fmtAr(selOpt.dataset["socSem" + suf])}/h | Finde cliente $ ${fmtAr(selOpt.dataset["cliFin" + suf])}/h · socio $ ${fmtAr(selOpt.dataset["socFin" + suf])}/h | Feriado cliente $ ${fmtAr(selOpt.dataset["cliFer" + suf])}/h · socio $ ${fmtAr(selOpt.dataset["socFer" + suf])}/h.`;
+        } else {
+            const suf = esMas12 ? "P12" : "M12";
+            const cat = esFer ? "Fer" : (esFinde ? "Fin" : "Sem");
+            const diaTxt = esFer ? "Feriado nacional" : (esFinde ? "Fin de semana" : "Día de semana");
+            previewHint.textContent = `Tarifa aplicable a este turno (${diaTxt} · ${tramoTxt}): cliente $ ${fmtAr(selOpt.dataset["cli" + cat + suf])}/h · socio $ ${fmtAr(selOpt.dataset["soc" + cat + suf])}/h.`;
+        }
+    };
+    if (srvSelect) {
+        srvSelect.addEventListener("change", updateTarifaPreview);
+        if (chkFeriado) {
+            chkFeriado.addEventListener("change", updateTarifaPreview);
+        }
+        updateTarifaPreview();
+    }
 
     const dropdown = document.getElementById("socio-dropdown");
     if (!dropdown) return;

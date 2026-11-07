@@ -288,10 +288,13 @@
     }
 
     function createEventBadges(event) {
-        if (!event.marcacionEntrada && !event.marcacionSalida && !event.aclaracionTurno) {
+        if (!event.marcacionEntrada && !event.marcacionSalida && !event.aclaracionTurno && !event.feriadoNacional) {
             return null;
         }
         const row = createElement("span", "calendar-event-badges");
+        if (event.feriadoNacional) {
+            row.appendChild(createElement("span", "event-attendance-pill is-holiday", "★ Feriado"));
+        }
         if (event.marcacionEntrada && event.marcacionSalida) {
             row.appendChild(createElement("span", "event-attendance-pill is-complete", "✓ E/S"));
         } else if (event.marcacionEntrada) {
@@ -506,6 +509,13 @@
                 value: dateTimeShort(event.marcacionSalida)
             }
         ];
+        if (event.feriadoNacional) {
+            items.push({
+                className: "detail-item detail-item-servicio",
+                label: "Condición tarifaria:",
+                value: "Feriado nacional (tarifa diferenciada aplicada)"
+            });
+        }
         if (event.aclaracionTurno) {
             items.push({
                 className: "detail-item detail-item-aclaracion",
@@ -856,6 +866,17 @@
         const partnerField = createCustomPartnerDropdown("Socio disponible en ese horario");
         const clientField = createSelect("Cliente y domicilio");
         const serviceField = createSelect("Servicio");
+        const rateHint = createElement("small", "muted", "");
+        serviceField.wrapper.appendChild(rateHint);
+
+        const feriadoWrap = createElement("div", "field field-spaced");
+        const feriadoLabel = createElement("label", "check-inline");
+        const feriadoChk = document.createElement("input");
+        feriadoChk.type = "checkbox";
+        feriadoChk.checked = Boolean(event.feriadoNacional);
+        feriadoLabel.append(feriadoChk, document.createTextNode(" Es feriado nacional (aplicar tarifa de feriado a cliente y socio)"));
+        const feriadoNote = createElement("small", "muted", "");
+        feriadoWrap.append(feriadoLabel, feriadoNote);
 
         const viaticoField = createInput("Viático ($ al socio, opcional)", "number",
             Number(event.importeViatico || 0) > 0 ? String(event.importeViatico) : "");
@@ -877,7 +898,7 @@
         const timeGrid = createElement("div", "form-grid");
         timeGrid.append(dateField.wrapper, startField.wrapper, endField.wrapper);
         const hint = createElement("p", "form-hint",
-            "Al cambiar el día o el horario, la lista de socios se actualiza con los que están libres en ese momento.");
+            "Al cambiar el día o el horario, la lista de socios y la tarifa aplicable se actualizan automáticamente.");
 
         const actions = createElement("div", "form-actions");
         const cancel = createElement("button", "button button-quiet", "Cancelar");
@@ -886,7 +907,7 @@
         const save = createElement("button", "button button-primary", "Guardar cambios");
         save.type = "button";
         actions.append(cancel, save);
-        detailBox.append(message, timeGrid, partnerField.wrapper, clientField.wrapper, serviceField.wrapper, extrasGrid, hint, actions);
+        detailBox.append(message, timeGrid, partnerField.wrapper, clientField.wrapper, serviceField.wrapper, feriadoWrap, extrasGrid, hint, actions);
 
         const showError = text => {
             message.textContent = text;
@@ -925,6 +946,99 @@
                 })
                 .catch(() => showError("No se pudo consultar la disponibilidad. Intentá nuevamente."));
         };
+        let serviciosCatalogo = [];
+        let feriadosMap = new Map();
+
+        const calcShiftHours = () => {
+            if (!startField.input.value || !endField.input.value || startField.input.value === endField.input.value) {
+                return null;
+            }
+            const [sh, sm] = startField.input.value.split(":").map(Number);
+            const [eh, em] = endField.input.value.split(":").map(Number);
+            let mins = (eh * 60 + em) - (sh * 60 + sm);
+            if (mins < 0) mins += 1440;
+            return mins / 60;
+        };
+
+        const resolveRatesForItem = item => {
+            const hrs = calcShiftHours();
+            const mas12 = hrs !== null && hrs >= 12;
+            const dVal = dateField.input.value ? parseDate(dateField.input.value) : null;
+            const dow = dVal ? dVal.getDay() : 1;
+            const finde = dow === 0 || dow === 6;
+            const feriado = feriadoChk.checked;
+            let cli, soc, catTxt;
+            if (feriado) {
+                cli = mas12 ? item.valorHoraClienteFeriadoMas12 : item.valorHoraClienteFeriadoMenos12;
+                soc = mas12 ? item.valorHoraSocioFeriadoMas12 : item.valorHoraSocioFeriadoMenos12;
+                catTxt = "Feriado nacional";
+            } else if (finde) {
+                cli = mas12 ? item.valorHoraClienteFindeMas12 : item.valorHoraClienteFindeMenos12;
+                soc = mas12 ? item.valorHoraSocioFindeMas12 : item.valorHoraSocioFindeMenos12;
+                catTxt = "Fin de semana";
+            } else {
+                cli = mas12 ? item.valorHoraClienteSemanaMas12 : item.valorHora;
+                soc = mas12 ? item.valorHoraSocioSemanaMas12 : item.valorHoraSocio;
+                catTxt = "Día de semana";
+            }
+            return {
+                cli: cli ?? item.valorHora,
+                soc: soc ?? item.valorHoraSocio,
+                catTxt,
+                tramoTxt: mas12 ? "12 hs o más" : "menos de 12 hs"
+            };
+        };
+
+        const refreshServiceLabels = () => {
+            if (!serviciosCatalogo.length) return;
+            const currentId = serviceField.select.value ? Number(serviceField.select.value) : event.servicioId;
+            fillSelect(
+                serviceField.select,
+                serviciosCatalogo.map(item => {
+                    const r = resolveRatesForItem(item);
+                    return {
+                        value: item.servicioId,
+                        text: `${label(item.tipoServicio)} · cliente ${moneyText(r.cli)}/h · socio ${moneyText(r.soc)}/h`
+                    };
+                }),
+                "Seleccioná un servicio",
+                currentId
+            );
+            const selectedSrv = serviciosCatalogo.find(s => Number(s.servicioId) === Number(serviceField.select.value));
+            if (selectedSrv) {
+                const r = resolveRatesForItem(selectedSrv);
+                rateHint.textContent = `Tarifa aplicable (${r.catTxt} · ${r.tramoTxt}): cliente ${moneyText(r.cli)}/h · socio ${moneyText(r.soc)}/h.`;
+            } else {
+                rateHint.textContent = "";
+            }
+        };
+
+        fetch("/api/feriados", {headers: {Accept: "application/json"}})
+            .then(res => res.ok ? res.json() : [])
+            .then(lista => {
+                lista.forEach(f => feriadosMap.set(f.fecha, f.descripcion));
+                const descInicial = feriadosMap.get(dateField.input.value);
+                feriadoNote.textContent = descInicial
+                    ? `La fecha figura en Feriados nacionales (${descInicial}).`
+                    : "";
+            })
+            .catch(() => {});
+
+        dateField.input.addEventListener("change", () => {
+            const nuevaFecha = dateField.input.value;
+            if (nuevaFecha && feriadosMap.has(nuevaFecha)) {
+                feriadoChk.checked = true;
+                feriadoNote.textContent = `La fecha figura en Feriados nacionales (${feriadosMap.get(nuevaFecha)}).`;
+            } else {
+                feriadoChk.checked = false;
+                feriadoNote.textContent = "";
+            }
+            refreshServiceLabels();
+        });
+        [startField, endField].forEach(f => f.input.addEventListener("change", refreshServiceLabels));
+        feriadoChk.addEventListener("change", refreshServiceLabels);
+        serviceField.select.addEventListener("change", refreshServiceLabels);
+
         [dateField, startField, endField].forEach(field => field.input.addEventListener("change", () => {
             const current = partnerField.select.value;
             loadPartners(current ? Number(current) : null);
@@ -937,12 +1051,13 @@
         loadOptions("/api/clientes/opciones", clientField.select,
             item => ({value: item.clienteId, text: `${item.paciente} · ${item.domicilio}`}),
             "Seleccioná un cliente", event.clienteId);
-        loadOptions("/api/servicios/opciones", serviceField.select,
-            item => ({
-                value: item.servicioId,
-                text: `${label(item.tipoServicio)} · cliente $ ${item.valorHora}/h · socio $ ${item.valorHoraSocio}/h`
-            }),
-            "Seleccioná un servicio", event.servicioId);
+        fetch("/api/servicios/opciones", {headers: {Accept: "application/json"}})
+            .then(response => response.json())
+            .then(items => {
+                serviciosCatalogo = Array.isArray(items) ? items : [];
+                refreshServiceLabels();
+            })
+            .catch(() => showError("No se pudieron cargar las opciones. Actualizá la página."));
         loadPartners(event.socioId);
 
         save.addEventListener("click", () => {
@@ -961,6 +1076,7 @@
                     fecha: dateField.input.value || null,
                     horaInicio: startField.input.value || null,
                     horaFin: endField.input.value || null,
+                    feriadoNacional: feriadoChk.checked,
                     importeViatico: viaticoField.input.value ? Number(viaticoField.input.value) : 0,
                     importeSanatorio: sanatorioField.input.value ? Number(sanatorioField.input.value) : 0
                 })

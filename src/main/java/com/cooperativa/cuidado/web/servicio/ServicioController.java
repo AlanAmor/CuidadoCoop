@@ -63,7 +63,18 @@ public class ServicioController {
         ServicioForm formulario = new ServicioForm();
         formulario.setTipoServicioId(servicio.getTipoServicio().getId());
         formulario.setValorHora(servicio.getValorHora());
-        formulario.setValorHoraSocio(servicio.getValorHoraSocio());
+        formulario.setValorHoraClienteSemanaMas12(servicio.getEfectivoClienteSemanaMas12());
+        formulario.setValorHoraClienteFindeMenos12(servicio.getEfectivoClienteFindeMenos12());
+        formulario.setValorHoraClienteFindeMas12(servicio.getEfectivoClienteFindeMas12());
+        formulario.setValorHoraClienteFeriadoMenos12(servicio.getEfectivoClienteFeriadoMenos12());
+        formulario.setValorHoraClienteFeriadoMas12(servicio.getEfectivoClienteFeriadoMas12());
+
+        formulario.setValorHoraSocio(servicio.getEfectivoSocioSemanaMenos12());
+        formulario.setValorHoraSocioSemanaMas12(servicio.getEfectivoSocioSemanaMas12());
+        formulario.setValorHoraSocioFindeMenos12(servicio.getEfectivoSocioFindeMenos12());
+        formulario.setValorHoraSocioFindeMas12(servicio.getEfectivoSocioFindeMas12());
+        formulario.setValorHoraSocioFeriadoMenos12(servicio.getEfectivoSocioFeriadoMenos12());
+        formulario.setValorHoraSocioFeriadoMas12(servicio.getEfectivoSocioFeriadoMas12());
         return formulario(model, formulario, "Editar servicio", "/servicios/" + id);
     }
 
@@ -97,10 +108,38 @@ public class ServicioController {
     }
 
     private ServicioDomicilio aEntidad(ServicioForm formulario) {
+        ServicioDomicilio borrador = new ServicioDomicilio();
+        borrador.setTipoServicio(tipoService.obtener(formulario.getTipoServicioId()));
+        borrador.setValorHora(formulario.getValorHora());
+        borrador.setValorHoraClienteSemanaMas12(formulario.getValorHoraClienteSemanaMas12());
+        borrador.setValorHoraClienteFindeMenos12(formulario.getValorHoraClienteFindeMenos12());
+        borrador.setValorHoraClienteFindeMas12(formulario.getValorHoraClienteFindeMas12());
+        borrador.setValorHoraClienteFeriadoMenos12(formulario.getValorHoraClienteFeriadoMenos12());
+        borrador.setValorHoraClienteFeriadoMas12(formulario.getValorHoraClienteFeriadoMas12());
+
+        borrador.setValorHoraSocio(formulario.getValorHoraSocio());
+        borrador.setValorHoraSocioSemanaMas12(formulario.getValorHoraSocioSemanaMas12());
+        borrador.setValorHoraSocioFindeMenos12(formulario.getValorHoraSocioFindeMenos12());
+        borrador.setValorHoraSocioFindeMas12(formulario.getValorHoraSocioFindeMas12());
+        borrador.setValorHoraSocioFeriadoMenos12(formulario.getValorHoraSocioFeriadoMenos12());
+        borrador.setValorHoraSocioFeriadoMas12(formulario.getValorHoraSocioFeriadoMas12());
+
+        // Persistir las 6 tarifas resueltas tanto para cliente como para socio
         ServicioDomicilio servicio = new ServicioDomicilio();
-        servicio.setTipoServicio(tipoService.obtener(formulario.getTipoServicioId()));
-        servicio.setValorHora(formulario.getValorHora());
-        servicio.setValorHoraSocio(formulario.getValorHoraSocio());
+        servicio.setTipoServicio(borrador.getTipoServicio());
+        servicio.setValorHora(borrador.getValorHora());
+        servicio.setValorHoraClienteSemanaMas12(borrador.getEfectivoClienteSemanaMas12());
+        servicio.setValorHoraClienteFindeMenos12(borrador.getEfectivoClienteFindeMenos12());
+        servicio.setValorHoraClienteFindeMas12(borrador.getEfectivoClienteFindeMas12());
+        servicio.setValorHoraClienteFeriadoMenos12(borrador.getEfectivoClienteFeriadoMenos12());
+        servicio.setValorHoraClienteFeriadoMas12(borrador.getEfectivoClienteFeriadoMas12());
+
+        servicio.setValorHoraSocio(borrador.getValorHoraSocio());
+        servicio.setValorHoraSocioSemanaMas12(borrador.getEfectivoSocioSemanaMas12());
+        servicio.setValorHoraSocioFindeMenos12(borrador.getEfectivoSocioFindeMenos12());
+        servicio.setValorHoraSocioFindeMas12(borrador.getEfectivoSocioFindeMas12());
+        servicio.setValorHoraSocioFeriadoMenos12(borrador.getEfectivoSocioFeriadoMenos12());
+        servicio.setValorHoraSocioFeriadoMas12(borrador.getEfectivoSocioFeriadoMas12());
         return servicio;
     }
 

@@ -34,6 +34,7 @@ public class LiquidacionFamiliaService {
 
     private static final BigDecimal CERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
     private static final BigDecimal CIEN = new BigDecimal("100");
+    private static final BigDecimal PORCENTAJE_IMPUESTOS = new BigDecimal("1.2");
     private static final String[] MESES_ES = {
             "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
             "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
@@ -128,7 +129,9 @@ public class LiquidacionFamiliaService {
         BigDecimal porcentajeIva = noNegativo(form.getPorcentajeIva());
         BigDecimal importeIva = subtotal.multiply(porcentajeIva)
                 .divide(CIEN, 2, RoundingMode.HALF_UP);
-        BigDecimal importeImpuestos = noNegativo(form.getImporteImpuestos());
+        BigDecimal importeImpuestos = subtotal.add(importeIva)
+                .multiply(PORCENTAJE_IMPUESTOS)
+                .divide(CIEN, 2, RoundingMode.HALF_UP);
 
         BigDecimal totalMensual = subtotal
                 .add(importeIva)

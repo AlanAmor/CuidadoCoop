@@ -36,6 +36,10 @@ public class AsignacionForm {
     @PositiveOrZero(message = "El importe de sanatorio no puede ser negativo")
     private BigDecimal importeSanatorio;
 
+    private Boolean feriadoNacional;
+
+    private boolean feriadoNacionalEspecificado;
+
     private boolean repetir;
 
     private UnidadDuracion unidad = UnidadDuracion.SEMANAS;
@@ -138,5 +142,21 @@ public class AsignacionForm {
 
     public void setImporteSanatorio(BigDecimal importeSanatorio) {
         this.importeSanatorio = importeSanatorio;
+    }
+
+    public Boolean getFeriadoNacional() {
+        return feriadoNacional;
+    }
+
+    public void setFeriadoNacional(Boolean feriadoNacional) {
+        this.feriadoNacional = feriadoNacional;
+    }
+
+    public boolean isFeriadoNacionalEspecificado() {
+        return feriadoNacionalEspecificado;
+    }
+
+    public void setFeriadoNacionalEspecificado(boolean feriadoNacionalEspecificado) {
+        this.feriadoNacionalEspecificado = feriadoNacionalEspecificado;
     }
 }

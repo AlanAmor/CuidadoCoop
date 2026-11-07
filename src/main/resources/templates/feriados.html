@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Feriados nacionales | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=6)}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">GESTIÓN DE TARIFAS</p>
+            <h1>Feriados nacionales</h1>
+            <p class="muted">Los turnos asignados en estas fechas aplican automáticamente el valor hora de feriado nacional (para cliente y para socio). También podés marcar o desmarcar cada turno puntual al crearlo o editarlo.</p>
+        </div>
+        <div class="quick-links">
+            <a class="button button-secondary" th:href="@{/servicios}">Volver a servicios</a>
+        </div>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <div class="form-grid" style="align-items: start; margin-bottom: 20px;">
+        <form class="content-card form-card" method="post" th:action="@{/feriados}">
+            <h2 class="step-title">Agregar feriado nacional</h2>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="fecha">Fecha</label>
+                    <input id="fecha" name="fecha" type="date" required>
+                </div>
+                <div class="field">
+                    <label for="descripcion">Motivo / Nombre del feriado</label>
+                    <input id="descripcion" name="descripcion" type="text" maxlength="160"
+                           placeholder="Ej: Viernes Santo / Carnaval / Día de la Bandera" required>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="button button-primary" type="submit">Agregar feriado</button>
+            </div>
+        </form>
+
+        <form class="content-card form-card" method="post" th:action="@{/feriados/cargar-fijos}">
+            <h2 class="step-title">Carga rápida anual</h2>
+            <p class="muted">Precargá con un clic los feriados nacionales inamovibles de Argentina (1/1, 24/3, 2/4, 1/5, 25/5, 20/6, 9/7, 8/12 y 25/12) y luego agregá manualmente los trasladables o turísticos del año.</p>
+            <div class="field">
+                <label for="anio">Año</label>
+                <input id="anio" name="anio" type="number" min="2020" max="2100" th:value="${anioSugerido}" required>
+            </div>
+            <div class="form-actions">
+                <button class="button button-secondary" type="submit">Cargar feriados fijos del año</button>
+                <a class="button button-quiet" th:if="${anioFiltro != null}" th:href="@{/feriados}">Ver todos los años</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="content-card table-card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Día</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="f : ${feriados}">
+                    <td><strong th:text="${#temporals.format(f.fecha, 'dd/MM/yyyy')}"></strong></td>
+                    <td th:text="${#temporals.dayOfWeekName(f.fecha)}"></td>
+                    <td th:text="${f.descripcion}"></td>
+                    <td class="row-actions">
+                        <form method="post" th:action="@{/feriados/{id}/eliminar(id=${f.id})}"
+                              data-confirm="¿Quitar esta fecha del listado de feriados nacionales? Los turnos ya registrados conservarán su valor hora actual.">
+                            <button class="button button-danger button-sm" type="submit">Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(feriados)}">
+                    <td colspan="4" class="empty-state">Todavía no hay feriados nacionales cargados. Usá el formulario de arriba o la carga rápida anual.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+

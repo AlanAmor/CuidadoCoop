@@ -52,7 +52,17 @@ public class ServicioDomicilioService {
         ServicioDomicilio servicio = obtener(id);
         servicio.setTipoServicio(datos.getTipoServicio());
         servicio.setValorHora(datos.getValorHora());
+        servicio.setValorHoraClienteSemanaMas12(datos.getValorHoraClienteSemanaMas12());
+        servicio.setValorHoraClienteFindeMenos12(datos.getValorHoraClienteFindeMenos12());
+        servicio.setValorHoraClienteFindeMas12(datos.getValorHoraClienteFindeMas12());
+        servicio.setValorHoraClienteFeriadoMenos12(datos.getValorHoraClienteFeriadoMenos12());
+        servicio.setValorHoraClienteFeriadoMas12(datos.getValorHoraClienteFeriadoMas12());
         servicio.setValorHoraSocio(datos.getValorHoraSocio());
+        servicio.setValorHoraSocioSemanaMas12(datos.getValorHoraSocioSemanaMas12());
+        servicio.setValorHoraSocioFindeMenos12(datos.getValorHoraSocioFindeMenos12());
+        servicio.setValorHoraSocioFindeMas12(datos.getValorHoraSocioFindeMas12());
+        servicio.setValorHoraSocioFeriadoMenos12(datos.getValorHoraSocioFeriadoMenos12());
+        servicio.setValorHoraSocioFeriadoMas12(datos.getValorHoraSocioFeriadoMas12());
         return servicioRepository.save(servicio);
     }
 

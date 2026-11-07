@@ -2177,3 +2177,37 @@ td {
     background: #fff4d6;
     color: #8a5600;
 }
+
+.event-attendance-pill.is-holiday {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.tariff-matrix-table th,
+.tariff-matrix-table td {
+    vertical-align: middle;
+}
+
+.tariff-matrix-table input[type="number"] {
+    width: 100%;
+    min-width: 150px;
+}
+
+.tariff-mini-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.tariff-mini-label {
+    color: var(--muted);
+    margin-right: 4px;
+}
+
+.alert-info {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}

@@ -110,6 +110,7 @@ public class SeguridadInterceptor implements HandlerInterceptor {
 
     private Permiso permisoParaRuta(String path, String metodo) {
         if (path.equals("/") || path.equals("/api/calendario")
+                || path.equals("/api/feriados")
                 || path.matches("^/api/asistencias/\\d+/marcacion$")) {
             return null;
         }
@@ -163,7 +164,9 @@ public class SeguridadInterceptor implements HandlerInterceptor {
         if (path.startsWith("/clientes")) {
             return Permiso.AGREGAR_CLIENTES;
         }
-        if (path.startsWith("/servicios") || path.startsWith("/tipos-servicio")) {
+        if (path.startsWith("/servicios")
+                || path.startsWith("/tipos-servicio")
+                || path.startsWith("/feriados")) {
             return Permiso.GESTIONAR_SERVICIOS;
         }
         if (path.startsWith("/api/legajos/archivos/") && "DELETE".equalsIgnoreCase(metodo)) {

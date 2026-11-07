@@ -4,15 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Servicio | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=6)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
-<main class="container narrow-container">
+<main class="container">
     <section class="page-heading">
         <div>
             <p class="eyebrow">SERVICIOS</p>
             <h1 th:text="${titulo}">Servicio</h1>
+            <p class="muted">Configurá el valor por hora para cliente y para socio según la duración del turno (&lt; 12 hs o &ge; 12 hs) y el tipo de día (día de semana, fin de semana o feriado nacional).</p>
+        </div>
+        <div class="quick-links">
+            <a class="button button-secondary" th:href="@{/feriados}">Feriados nacionales</a>
         </div>
     </section>
     <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
@@ -26,22 +30,157 @@
             <small class="field-error" th:errors="*{tipoServicioId}"></small>
             <small class="muted">¿Falta uno? <a th:href="@{/tipos-servicio}">Administrá los tipos de servicio</a>.</small>
         </div>
-        <div class="field field-spaced">
-            <label for="valorHora">Precio por hora que se cobra al cliente ($)</label>
-            <input id="valorHora" type="number" min="0.01" step="0.01" th:field="*{valorHora}">
-            <small class="field-error" th:errors="*{valorHora}"></small>
-        </div>
-        <div class="field field-spaced">
-            <label for="valorHoraSocio">Pago por hora al socio ($)</label>
-            <input id="valorHoraSocio" type="number" min="0.01" step="0.01" th:field="*{valorHoraSocio}">
-            <small class="field-error" th:errors="*{valorHoraSocio}"></small>
-        </div>
-        <p class="form-hint">Son valores independientes. Cambiarlos no modifica los turnos ya cargados: conservan los valores con los que se registraron.</p>
+
+        <fieldset class="repeat-box field-spaced">
+            <legend>1. Precio por hora que se cobra al cliente ($)</legend>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                <small class="muted">Un turno de exactamente 12 horas (ej. 08:00 a 20:00) se liquida en la columna <strong>12 hs o más (&ge; 12 hs)</strong>.</small>
+                <button type="button" class="button button-quiet button-sm" id="btn-copiar-cliente">
+                    Copiar base en casillas vacías
+                </button>
+            </div>
+            <div class="table-wrap">
+                <table class="tariff-matrix-table">
+                    <thead>
+                    <tr>
+                        <th>Tipo de día</th>
+                        <th>Menos de 12 hs (&lt; 12 hs)</th>
+                        <th>12 hs o más (&ge; 12 hs)</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><strong>Día de semana</strong> <span class="muted">(Lun a Vie)</span></td>
+                        <td>
+                            <input id="valorHora" type="number" min="0.01" step="0.01" th:field="*{valorHora}" placeholder="Ej: 4500.00" required>
+                            <small class="field-error" th:errors="*{valorHora}"></small>
+                        </td>
+                        <td>
+                            <input id="valorHoraClienteSemanaMas12" class="js-cliente-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraClienteSemanaMas12}" placeholder="Si queda vacío usa base">
+                            <small class="field-error" th:errors="*{valorHoraClienteSemanaMas12}"></small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fin de semana</strong> <span class="muted">(Sáb y Dom)</span></td>
+                        <td>
+                            <input id="valorHoraClienteFindeMenos12" class="js-cliente-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraClienteFindeMenos12}" placeholder="Si queda vacío usa base">
+                            <small class="field-error" th:errors="*{valorHoraClienteFindeMenos12}"></small>
+                        </td>
+                        <td>
+                            <input id="valorHoraClienteFindeMas12" class="js-cliente-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraClienteFindeMas12}" placeholder="Si queda vacío usa finde/semana">
+                            <small class="field-error" th:errors="*{valorHoraClienteFindeMas12}"></small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Feriado nacional</strong></td>
+                        <td>
+                            <input id="valorHoraClienteFeriadoMenos12" class="js-cliente-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraClienteFeriadoMenos12}" placeholder="Si queda vacío usa finde/base">
+                            <small class="field-error" th:errors="*{valorHoraClienteFeriadoMenos12}"></small>
+                        </td>
+                        <td>
+                            <input id="valorHoraClienteFeriadoMas12" class="js-cliente-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraClienteFeriadoMas12}" placeholder="Si queda vacío usa feriado/finde">
+                            <small class="field-error" th:errors="*{valorHoraClienteFeriadoMas12}"></small>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+
+        <fieldset class="repeat-box field-spaced">
+            <legend>2. Pago por hora al socio / compañera ($)</legend>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                <small class="muted">Valores diferenciados por día de semana, fin de semana y feriado nacional en cada tramo horario.</small>
+                <button type="button" class="button button-quiet button-sm" id="btn-copiar-socio">
+                    Copiar base en casillas vacías
+                </button>
+            </div>
+            <div class="table-wrap">
+                <table class="tariff-matrix-table">
+                    <thead>
+                    <tr>
+                        <th>Tipo de día</th>
+                        <th>Menos de 12 hs (&lt; 12 hs)</th>
+                        <th>12 hs o más (&ge; 12 hs)</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><strong>Día de semana</strong> <span class="muted">(Lun a Vie)</span></td>
+                        <td>
+                            <input id="valorHoraSocio" type="number" min="0.01" step="0.01" th:field="*{valorHoraSocio}" placeholder="Ej: 3200.00" required>
+                            <small class="field-error" th:errors="*{valorHoraSocio}"></small>
+                        </td>
+                        <td>
+                            <input id="valorHoraSocioSemanaMas12" class="js-socio-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraSocioSemanaMas12}" placeholder="Si queda vacío usa base">
+                            <small class="field-error" th:errors="*{valorHoraSocioSemanaMas12}"></small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fin de semana</strong> <span class="muted">(Sáb y Dom)</span></td>
+                        <td>
+                            <input id="valorHoraSocioFindeMenos12" class="js-socio-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraSocioFindeMenos12}" placeholder="Si queda vacío usa base">
+                            <small class="field-error" th:errors="*{valorHoraSocioFindeMenos12}"></small>
+                        </td>
+                        <td>
+                            <input id="valorHoraSocioFindeMas12" class="js-socio-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraSocioFindeMas12}" placeholder="Si queda vacío usa finde/semana">
+                            <small class="field-error" th:errors="*{valorHoraSocioFindeMas12}"></small>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Feriado nacional</strong></td>
+                        <td>
+                            <input id="valorHoraSocioFeriadoMenos12" class="js-socio-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraSocioFeriadoMenos12}" placeholder="Si queda vacío usa finde/base">
+                            <small class="field-error" th:errors="*{valorHoraSocioFeriadoMenos12}"></small>
+                        </td>
+                        <td>
+                            <input id="valorHoraSocioFeriadoMas12" class="js-socio-extra" type="number" min="0.01" step="0.01"
+                                   th:field="*{valorHoraSocioFeriadoMas12}" placeholder="Si queda vacío usa feriado/finde">
+                            <small class="field-error" th:errors="*{valorHoraSocioFeriadoMas12}"></small>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+
+        <p class="form-hint">Son valores independientes. Cambiarlos no modifica los turnos ya cargados: cada turno conserva el valor hora con el que se registró.</p>
         <div class="form-actions">
-            <button class="button button-primary" type="submit">Guardar</button>
+            <button class="button button-primary" type="submit">Guardar servicio</button>
             <a class="button button-secondary" th:href="@{/servicios}">Cancelar</a>
         </div>
     </form>
 </main>
+<script>
+(() => {
+    const bindCopy = (btnId, baseId, selector) => {
+        const btn = document.getElementById(btnId);
+        const base = document.getElementById(baseId);
+        if (!btn || !base) return;
+        btn.addEventListener("click", () => {
+            if (!base.value) {
+                base.focus();
+                return;
+            }
+            document.querySelectorAll(selector).forEach(inp => {
+                if (!inp.value) {
+                    inp.value = base.value;
+                }
+            });
+        });
+    };
+    bindCopy("btn-copiar-cliente", "valorHora", ".js-cliente-extra");
+    bindCopy("btn-copiar-socio", "valorHoraSocio", ".js-socio-extra");
+})();
+</script>
 </body>
 </html>

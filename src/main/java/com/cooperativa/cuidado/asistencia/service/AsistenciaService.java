@@ -7,6 +7,7 @@ import com.cooperativa.cuidado.exception.AccesoDenegadoException;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
 import com.cooperativa.cuidado.exception.ReglaNegocioException;
+import com.cooperativa.cuidado.feriado.FeriadoNacionalRepository;
 import com.cooperativa.cuidado.servicio.ServicioDomicilio;
 import com.cooperativa.cuidado.servicio.ServicioDomicilioRepository;
 import com.cooperativa.cuidado.socio.EstadoSocio;
@@ -14,6 +15,7 @@ import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.socio.SocioRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class AsistenciaService {
     private final ServicioDomicilioRepository servicioDomicilioRepository;
     private final ClienteRepository clienteRepository;
     private final Validator validator;
+    private final FeriadoNacionalRepository feriadoRepository;
 
     public AsistenciaService(
             AsistenciaRepository asistenciaRepository,
@@ -49,17 +52,32 @@ public class AsistenciaService {
             ServicioDomicilioRepository servicioDomicilioRepository,
             ClienteRepository clienteRepository,
             Validator validator) {
+        this(asistenciaRepository, socioRepository, servicioDomicilioRepository, clienteRepository, validator, null);
+    }
+
+    @Autowired
+    public AsistenciaService(
+            AsistenciaRepository asistenciaRepository,
+            SocioRepository socioRepository,
+            ServicioDomicilioRepository servicioDomicilioRepository,
+            ClienteRepository clienteRepository,
+            Validator validator,
+            FeriadoNacionalRepository feriadoRepository) {
         this.asistenciaRepository = asistenciaRepository;
         this.socioRepository = socioRepository;
         this.servicioDomicilioRepository = servicioDomicilioRepository;
         this.clienteRepository = clienteRepository;
         this.validator = validator;
+        this.feriadoRepository = feriadoRepository;
     }
 
     @Transactional
     public Asistencia registrar(Asistencia asistencia) {
         asistencia.setId(null);
         cargarReferenciasBloqueadas(asistencia);
+        if (asistencia.getFeriadoNacional() == null) {
+            asistencia.setFeriadoNacional(esFeriadoRegistrado(asistencia.getFecha()));
+        }
         asistencia.setImporteViatico(normalizarAdicional(asistencia.getImporteViatico(), "viático"));
         asistencia.setImporteSanatorio(normalizarAdicional(asistencia.getImporteSanatorio(), "sanatorio"));
         asistencia.calcularHorasTotales();
@@ -160,21 +178,30 @@ public class AsistenciaService {
 
         boolean cambiaServicio = !Objects.equals(
                 existente.getServicioDomicilio().getId(), datos.getServicioDomicilio().getId());
+        boolean cambiaFecha = !Objects.equals(existente.getFecha(), datos.getFecha());
+        boolean cambiaHorario = !Objects.equals(existente.getHoraInicio(), datos.getHoraInicio())
+                || !Objects.equals(existente.getHoraFin(), datos.getHoraFin());
         boolean cambiaSocioOFecha = !Objects.equals(existente.getSocio().getId(), datos.getSocio().getId())
-                || !Objects.equals(existente.getFecha(), datos.getFecha());
+                || cambiaFecha;
+        boolean nuevoFeriado = datos.getFeriadoNacional() != null
+                ? datos.getFeriadoNacional()
+                : (cambiaFecha ? esFeriadoRegistrado(datos.getFecha()) : existente.isFeriadoNacionalEfectivo());
+        boolean cambiaFeriado = existente.isFeriadoNacionalEfectivo() != nuevoFeriado;
+
         existente.setSocio(datos.getSocio());
         existente.setCliente(datos.getCliente());
         existente.setServicioDomicilio(datos.getServicioDomicilio());
         existente.setFecha(datos.getFecha());
         existente.setHoraInicio(datos.getHoraInicio());
         existente.setHoraFin(datos.getHoraFin());
+        existente.setFeriadoNacional(nuevoFeriado);
         if (datos.getImporteViatico() != null) {
             existente.setImporteViatico(normalizarAdicional(datos.getImporteViatico(), "viático"));
         }
         if (datos.getImporteSanatorio() != null) {
             existente.setImporteSanatorio(normalizarAdicional(datos.getImporteSanatorio(), "sanatorio"));
         }
-        if (cambiaServicio) {
+        if (cambiaServicio || cambiaFecha || cambiaHorario || cambiaFeriado) {
             existente.setValorHoraAplicado(null);
             existente.setValorHoraSocioAplicado(null);
         }
@@ -318,6 +345,10 @@ public class AsistenciaService {
 
         validarDatos(existente);
         return asistenciaRepository.save(existente);
+    }
+
+    private boolean esFeriadoRegistrado(LocalDate fecha) {
+        return feriadoRepository != null && fecha != null && feriadoRepository.existsByFecha(fecha);
     }
 
     private String normalizarAclaracion(String texto) {

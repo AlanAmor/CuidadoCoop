@@ -273,9 +273,9 @@
                 <input id="lf-porcentajeIva" name="porcentajeIva" type="number" step="0.01" min="0" max="100" value="21">
             </div>
             <div class="field">
-                <label for="lf-importeImpuestos">Impuestos ($ monto numérico)</label>
-                <input id="lf-importeImpuestos" name="importeImpuestos" type="number" step="0.01" min="0" value="0"
-                       placeholder="Ej: 41817.60">
+                <label for="lf-importeImpuestos">Impuestos (1,2% de Subtotal + IVA)</label>
+                <input id="lf-importeImpuestos" name="importeImpuestos" type="number" step="0.01" min="0" value="0.00"
+                       readonly style="background:#f1f5f9; font-weight:600;">
             </div>
         </div>
 
@@ -307,7 +307,7 @@
                 <strong id="res-iva">$ 0,00</strong>
             </div>
             <div class="resumen-item">
-                <span>Impuestos</span>
+                <span>Impuestos (1,2%)</span>
                 <strong id="res-impuestos">$ 0,00</strong>
             </div>
             <div class="resumen-item">
@@ -476,18 +476,24 @@
         tbody.appendChild(tr);
     }
 
+    function round2(n) {
+        return Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
+    }
+
     function recalcular() {
         let subtotal = 0;
         tbody.querySelectorAll("tr").forEach(tr => {
             const h = Number(tr.querySelector('[name="cuidadorHoras"]').value || 0);
             const v = Number(tr.querySelector('[name="cuidadorValorHora"]').value || 0);
-            subtotal += h * v;
+            subtotal += round2(h * v);
         });
+        subtotal = round2(subtotal);
 
         const pctIva = Math.max(0, Number(ivaInp.value || 0));
-        const iva = subtotal * pctIva / 100;
-        const impuestos = Math.max(0, Number(impInp.value || 0));
-        const total = subtotal + iva + impuestos;
+        const iva = round2(subtotal * pctIva / 100);
+        const impuestos = round2((subtotal + iva) * 1.2 / 100);
+        const total = round2(subtotal + iva + impuestos);
+        impInp.value = impuestos.toFixed(2);
 
         document.getElementById("res-iva-pct").textContent = pctIva.toLocaleString("es-AR", {maximumFractionDigits: 2});
         document.getElementById("res-subtotal").textContent = fmtMoney(subtotal);

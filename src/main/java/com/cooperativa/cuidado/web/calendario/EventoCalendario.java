@@ -22,5 +22,6 @@ public record EventoCalendario(
         LocalDateTime marcacionEntrada,
         LocalDateTime marcacionSalida,
         String aclaracionTurno,
-        boolean diaDelTurnoHoy) {
+        boolean diaDelTurnoHoy,
+        boolean feriadoNacional) {
 }

@@ -106,7 +106,8 @@ public class CalendarioService {
                 asistencia.getMarcacionEntrada(),
                 asistencia.getMarcacionSalida(),
                 asistencia.getAclaracionTurno(),
-                asistencia.esDiaDelTurno(LocalDate.now()));
+                asistencia.esDiaDelTurno(LocalDate.now()),
+                asistencia.isFeriadoNacionalEfectivo());
     }
 
     private SocioDisponibleCalendario convertirSocioDisponible(Socio socio) {

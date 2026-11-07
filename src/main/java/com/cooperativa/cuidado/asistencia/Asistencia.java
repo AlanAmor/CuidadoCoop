@@ -100,7 +100,14 @@ public class Asistencia {
     @Column(name = "aclaracion_turno", length = 1000)
     private String aclaracionTurno;
 
+    @Column(name = "feriado_nacional")
+    private Boolean feriadoNacional;
+
     public Asistencia() {
+    }
+
+    public boolean isFeriadoNacionalEfectivo() {
+        return Boolean.TRUE.equals(feriadoNacional);
     }
 
     /**
@@ -122,9 +129,9 @@ public class Asistencia {
     @PrePersist
     @PreUpdate
     public void calcularHorasTotales() {
-        capturarValorHora();
         if (horaInicio == null || horaFin == null || horaInicio.equals(horaFin)) {
             horasTotales = null;
+            capturarValorHora();
             return;
         }
 
@@ -134,17 +141,19 @@ public class Asistencia {
         }
         horasTotales = BigDecimal.valueOf(duracion.toSeconds())
                 .divide(BigDecimal.valueOf(3600), 2, RoundingMode.HALF_UP);
+        capturarValorHora();
     }
 
     public void capturarValorHora() {
         if (servicioDomicilio == null) {
             return;
         }
+        boolean esFeriado = isFeriadoNacionalEfectivo();
         if (valorHoraAplicado == null) {
-            valorHoraAplicado = servicioDomicilio.getValorHora();
+            valorHoraAplicado = servicioDomicilio.resolverValorHoraCliente(fecha, horasTotales, esFeriado);
         }
         if (valorHoraSocioAplicado == null) {
-            valorHoraSocioAplicado = servicioDomicilio.getValorHoraSocio();
+            valorHoraSocioAplicado = servicioDomicilio.resolverValorHoraSocio(fecha, horasTotales, esFeriado);
         }
     }
 
@@ -276,5 +285,13 @@ public class Asistencia {
 
     public void setAclaracionTurno(String aclaracionTurno) {
         this.aclaracionTurno = aclaracionTurno;
+    }
+
+    public Boolean getFeriadoNacional() {
+        return feriadoNacional;
+    }
+
+    public void setFeriadoNacional(Boolean feriadoNacional) {
+        this.feriadoNacional = feriadoNacional;
     }
 }

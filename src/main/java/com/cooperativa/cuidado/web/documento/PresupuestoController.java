@@ -4,8 +4,10 @@ import com.cooperativa.cuidado.cliente.service.ClienteService;
 import com.cooperativa.cuidado.documento.AlicuotaIva;
 import com.cooperativa.cuidado.documento.CalculoPresupuesto;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
+import com.cooperativa.cuidado.servicio.CategoriaDiaTarifa;
 import com.cooperativa.cuidado.servicio.ServicioDomicilio;
 import com.cooperativa.cuidado.servicio.ServicioDomicilioRepository;
+import com.cooperativa.cuidado.servicio.TramoHorarioTarifa;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +28,14 @@ public class PresupuestoController {
 
     @GetMapping("/presupuestos")
     public String mostrarFormulario(Model model) {
-        prepararOpciones(model, null, null, AlicuotaIva.SIN_IVA, false);
+        prepararOpciones(
+                model,
+                null,
+                null,
+                AlicuotaIva.SIN_IVA,
+                false,
+                CategoriaDiaTarifa.DIA_SEMANA,
+                TramoHorarioTarifa.MENOS_DE_12_HS);
         return "presupuestos";
     }
 
@@ -36,8 +45,10 @@ public class PresupuestoController {
             @RequestParam(required = false) BigDecimal horas,
             @RequestParam(defaultValue = "SIN_IVA") AlicuotaIva alicuotaIva,
             @RequestParam(defaultValue = "false") boolean pagoEfectivo,
+            @RequestParam(defaultValue = "DIA_SEMANA") CategoriaDiaTarifa categoriaDia,
+            @RequestParam(defaultValue = "MENOS_DE_12_HS") TramoHorarioTarifa tramoHorario,
             Model model) {
-        prepararOpciones(model, servicioId, horas, alicuotaIva, pagoEfectivo);
+        prepararOpciones(model, servicioId, horas, alicuotaIva, pagoEfectivo, categoriaDia, tramoHorario);
         if (servicioId == null || horas == null) {
             model.addAttribute("errorOperacion",
                     "Elegí un servicio e indicá las horas estimadas para ver el cálculo.");
@@ -47,8 +58,10 @@ public class PresupuestoController {
             ServicioDomicilio servicio = servicioRepository.findById(servicioId)
                     .orElseThrow(() -> new RecursoNoEncontradoException(
                             "El servicio seleccionado ya no existe. Actualizá la página y elegí otro."));
+            BigDecimal valorHoraCliente = servicio.resolverValorHoraCliente(categoriaDia, tramoHorario);
+            model.addAttribute("valorHoraSeleccionado", valorHoraCliente);
             model.addAttribute("calculo",
-                    CalculoPresupuesto.calcular(horas, servicio.getValorHora(), alicuotaIva, pagoEfectivo));
+                    CalculoPresupuesto.calcular(horas, valorHoraCliente, alicuotaIva, pagoEfectivo));
         } catch (IllegalArgumentException | RecursoNoEncontradoException ex) {
             model.addAttribute("errorOperacion", ex.getMessage());
         }
@@ -56,13 +69,23 @@ public class PresupuestoController {
     }
 
     private void prepararOpciones(
-            Model model, Long servicioId, BigDecimal horas, AlicuotaIva alicuota, boolean pagoEfectivo) {
+            Model model,
+            Long servicioId,
+            BigDecimal horas,
+            AlicuotaIva alicuota,
+            boolean pagoEfectivo,
+            CategoriaDiaTarifa categoriaDia,
+            TramoHorarioTarifa tramoHorario) {
         model.addAttribute("servicios", servicioRepository.findAllByOrderByIdAsc());
         model.addAttribute("clientes", clienteService.listar());
         model.addAttribute("alicuotas", AlicuotaIva.values());
+        model.addAttribute("categoriasDia", CategoriaDiaTarifa.values());
+        model.addAttribute("tramosHorarios", TramoHorarioTarifa.values());
         model.addAttribute("servicioId", servicioId);
         model.addAttribute("horas", horas);
         model.addAttribute("alicuotaIva", alicuota);
         model.addAttribute("pagoEfectivo", pagoEfectivo);
+        model.addAttribute("categoriaDia", categoriaDia);
+        model.addAttribute("tramoHorario", tramoHorario);
     }
 }

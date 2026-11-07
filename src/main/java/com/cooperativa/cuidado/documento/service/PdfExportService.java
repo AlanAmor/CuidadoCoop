@@ -107,14 +107,34 @@ public class PdfExportService {
     @Transactional(readOnly = true)
     public byte[] generarPresupuesto(
             Long clienteId, Long servicioId, BigDecimal horasEstimadas, AlicuotaIva alicuota, boolean pagoEfectivo) {
+        return generarPresupuesto(
+                clienteId,
+                servicioId,
+                horasEstimadas,
+                alicuota,
+                pagoEfectivo,
+                com.cooperativa.cuidado.servicio.CategoriaDiaTarifa.DIA_SEMANA,
+                com.cooperativa.cuidado.servicio.TramoHorarioTarifa.MENOS_DE_12_HS);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generarPresupuesto(
+            Long clienteId,
+            Long servicioId,
+            BigDecimal horasEstimadas,
+            AlicuotaIva alicuota,
+            boolean pagoEfectivo,
+            com.cooperativa.cuidado.servicio.CategoriaDiaTarifa categoriaDia,
+            com.cooperativa.cuidado.servicio.TramoHorarioTarifa tramoHorario) {
         ServicioDomicilio servicio = servicioRepository.findById(servicioId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe el servicio con ID " + servicioId));
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe el cliente con ID " + clienteId));
+        BigDecimal valorHoraAplicable = servicio.resolverValorHoraCliente(categoriaDia, tramoHorario);
         CalculoPresupuesto calculo = CalculoPresupuesto.calcular(
-                horasEstimadas, servicio.getValorHora(), alicuota, pagoEfectivo);
+                horasEstimadas, valorHoraAplicable, alicuota, pagoEfectivo);
         BigDecimal total = calculo.total();
         LocalDate fechaEmision = LocalDate.now();
 
@@ -127,6 +147,10 @@ public class PdfExportService {
             agregarLinea(document, "Paciente: " + cliente.getNombrePaciente());
             agregarLinea(document, "Domicilio: " + cliente.getDomicilio());
             agregarLinea(document, "Tipo de servicio: " + servicio.getTipoServicio().getEtiqueta());
+            if (categoriaDia != null && tramoHorario != null) {
+                agregarLinea(document, "Modalidad tarifaria: " + categoriaDia.getEtiqueta()
+                        + " · " + tramoHorario.getEtiqueta());
+            }
             agregarLinea(document, "Forma de pago: " + (pagoEfectivo
                     ? "Efectivo (10% de descuento)" : "Otros medios (sin descuento)"));
             document.add(Chunk.NEWLINE);
@@ -138,7 +162,7 @@ public class PdfExportService {
             agregarEncabezado(tabla, "Importe");
             agregarCelda(tabla, "Servicio de cuidado domiciliario", false);
             agregarCelda(tabla, formato(horasEstimadas), false);
-            agregarCelda(tabla, moneda(servicio.getValorHora()), false);
+            agregarCelda(tabla, moneda(valorHoraAplicable), false);
             agregarCelda(tabla, moneda(calculo.subtotal()), false);
             document.add(tabla);
 

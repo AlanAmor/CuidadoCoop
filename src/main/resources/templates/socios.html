@@ -20,6 +20,57 @@
     </section>
     <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
     <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <form class="content-card search-index-card" method="get" th:action="@{/socios}" data-indexed-search-form="socios">
+        <input type="hidden" name="inicial" id="filtro-inicial-socios" th:value="${inicialFiltro}" data-search-initial-input>
+        <div class="search-index-bar">
+            <div class="field search-index-field">
+                <label for="buscador-socios">Buscador indexado de socios</label>
+                <input id="buscador-socios" name="q" type="search" autocomplete="off"
+                       th:value="${q}"
+                       data-search-input
+                       placeholder="Buscar por apellido, nombre, DNI, CUIL, teléfono, correo o localidad...">
+            </div>
+            <div class="field">
+                <label for="filtro-especialidad">Especialidad</label>
+                <select id="filtro-especialidad" name="especialidad" data-search-especialidad-select>
+                    <option value="">Todas las especialidades</option>
+                    <option th:each="esp : ${especialidades}"
+                            th:value="${esp.name()}"
+                            th:selected="${especialidadFiltro == esp}"
+                            th:text="${esp.etiqueta}"></option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="filtro-estado">Estado</label>
+                <select id="filtro-estado" name="estado" data-search-estado-select>
+                    <option value="">Todos los estados</option>
+                    <option th:each="est : ${estados}"
+                            th:value="${est.name()}"
+                            th:selected="${estadoFiltro == est}"
+                            th:text="${est.etiqueta}"></option>
+                </select>
+            </div>
+            <div class="search-index-actions">
+                <button class="button button-secondary" type="submit">Buscar</button>
+                <a class="button button-quiet" th:href="@{/socios}" data-search-reset>Limpiar</a>
+            </div>
+        </div>
+        <div class="az-index-row">
+            <span class="az-index-label">Índice A–Z:</span>
+            <div class="az-index-pills" data-az-index>
+                <button type="button" class="az-pill is-active" data-letter="">Todos</button>
+                <button type="button" class="az-pill"
+                        th:each="letra : ${ {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','Ñ','O','P','Q','R','S','T','U','V','W','X','Y','Z'} }"
+                        th:attr="data-letter=${letra}"
+                        th:classappend="${inicialFiltro != null and #strings.equalsIgnoreCase(inicialFiltro, letra) ? ' is-active' : ''}"
+                        th:text="${letra}">A</button>
+            </div>
+            <span class="search-index-counter" data-search-counter data-entity-label="socios"
+                  th:text="|Mostrando ${#lists.size(socios)} de ${totalSocios != null ? totalSocios : #lists.size(socios)} socios|">Mostrando socios</span>
+        </div>
+    </form>
+
     <div class="content-card table-card">
         <div class="table-wrap">
             <table>
@@ -27,7 +78,12 @@
                 <tr><th>Socio</th><th>DNI</th><th>Contacto</th><th>Especialidad</th><th>Días disponibles</th><th>Estado</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
-                <tr th:each="socio : ${socios}">
+                <tr th:each="socio : ${socios}"
+                    data-search-row="socios"
+                    th:attr="data-search-text=|${socio.apellido} ${socio.nombre} ${socio.dni} ${socio.cuil != null ? socio.cuil : ''} ${socio.telefono} ${socio.correo != null ? socio.correo : ''} ${socio.direccion} ${socio.localidad != null ? socio.localidad : ''} ${socio.codigoPostal != null ? socio.codigoPostal : ''} ${socio.especialidad.etiqueta} ${socio.estado.etiqueta}|,
+                             data-search-initial=${socio.apellido != null and !socio.apellido.isEmpty() ? #strings.toUpperCase(#strings.substring(socio.apellido, 0, 1)) : ''},
+                             data-search-especialidad=${socio.especialidad.name()},
+                             data-search-estado=${socio.estado.name()}">
                     <td th:text="|${socio.apellido}, ${socio.nombre}|"></td>
                     <td>
                         <span th:text="${socio.dni}"></span>
@@ -66,8 +122,12 @@
                            title="Histórico completo de asistencias en Excel">Excel</a>
                     </td>
                 </tr>
+                <tr data-search-empty="socios" hidden>
+                    <td colspan="7" class="empty-state">No se encontraron socios que coincidan con la búsqueda indexada.</td>
+                </tr>
                 <tr th:if="${#lists.isEmpty(socios)}">
-                    <td colspan="7" class="empty-state">Todavía no hay socios. Creá el primero con "Nuevo socio".</td>
+                    <td colspan="7" class="empty-state"
+                        th:text="${(q != null and !#strings.isEmpty(q)) or especialidadFiltro != null or estadoFiltro != null or (inicialFiltro != null and !#strings.isEmpty(inicialFiltro)) ? 'No se encontraron socios para los filtros seleccionados.' : 'Todavía no hay socios. Creá el primero con &quot;Nuevo socio&quot;.'}">Todavía no hay socios. Creá el primero con "Nuevo socio".</td>
                 </tr>
                 </tbody>
             </table>

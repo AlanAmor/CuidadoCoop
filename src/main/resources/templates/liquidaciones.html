@@ -192,7 +192,8 @@
         <div class="form-grid">
             <div class="field">
                 <label for="recibo-socioId">Socio</label>
-                <select id="recibo-socioId" name="socioId" required>
+                <select id="recibo-socioId" name="socioId" required
+                        data-searchable-select="Buscar socio por apellido, nombre o DNI...">
                     <option value="">Seleccioná un socio</option>
                     <option th:each="socio : ${socios}"
                             th:value="${socio.id}"
@@ -429,9 +430,13 @@
     </form>
 
     <section class="content-card table-card" style="margin-top: 24px;">
-        <h3>Recibos de Retribución emitidos</h3>
+        <div class="table-card-header-search">
+            <h3>Recibos de Retribución emitidos</h3>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-recibos-emitidos"
+                   placeholder="Buscar recibo por socio, N° o período...">
+        </div>
         <div class="table-wrap">
-            <table>
+            <table id="tabla-recibos-emitidos">
                 <thead>
                 <tr>
                     <th>N° Recibo</th>
@@ -473,7 +478,8 @@
         <form class="filter-card" method="get" th:action="@{/liquidaciones/resultado}" style="margin-top: 14px;">
             <div class="field">
                 <label for="socioId">Socio</label>
-                <select id="socioId" name="socioId" required>
+                <select id="socioId" name="socioId" required
+                        data-searchable-select="Buscar socio por apellido, nombre o DNI...">
                     <option value="">Seleccioná un socio</option>
                     <option th:each="socio : ${socios}"
                             th:value="${socio.id}"

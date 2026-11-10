@@ -57,18 +57,71 @@ public class ExportacionController {
 
     @GetMapping("/asistencias/historico/pdf")
     public ResponseEntity<byte[]> descargarHistoricoPdf(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        byte[] archivo = pdfExportService.exportarHistoricoAsistenciasPdf(desde, hasta);
-        return descarga(archivo, PDF, "historico-asistencias-" + desde + "-a-" + hasta + ".pdf");
+            @RequestParam(required = false) String modo,
+            @RequestParam(required = false) Long socioId,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(defaultValue = "false") boolean historicoTotal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        Long socioEfectivo = resolverSocioSegunModo(modo, socioId);
+        Long clienteEfectivo = resolverClienteSegunModo(modo, clienteId);
+        if (socioEfectivo == null && clienteEfectivo == null && !historicoTotal && desde != null && hasta != null
+                && (modo == null || "GENERAL".equalsIgnoreCase(modo))) {
+            byte[] archivo = pdfExportService.exportarHistoricoAsistenciasPdf(desde, hasta);
+            return descarga(archivo, PDF, "historico-asistencias-" + desde + "-a-" + hasta + ".pdf");
+        }
+        byte[] archivo = pdfExportService.exportarHistoricoFiltradoPdf(
+                modo, socioEfectivo, clienteEfectivo, desde, hasta, historicoTotal);
+        return descarga(archivo, PDF, construirNombreArchivoHistorico(socioEfectivo, clienteEfectivo, desde, hasta, historicoTotal, ".pdf"));
     }
 
     @GetMapping("/asistencias/historico/excel")
     public ResponseEntity<byte[]> descargarHistoricoExcel(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        byte[] archivo = pdfExportService.exportarHistoricoAsistenciasExcel(desde, hasta);
-        return descarga(archivo, XLSX, "historico-asistencias-" + desde + "-a-" + hasta + ".xlsx");
+            @RequestParam(required = false) String modo,
+            @RequestParam(required = false) Long socioId,
+            @RequestParam(required = false) Long clienteId,
+            @RequestParam(defaultValue = "false") boolean historicoTotal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        Long socioEfectivo = resolverSocioSegunModo(modo, socioId);
+        Long clienteEfectivo = resolverClienteSegunModo(modo, clienteId);
+        if (socioEfectivo == null && clienteEfectivo == null && !historicoTotal && desde != null && hasta != null
+                && (modo == null || "GENERAL".equalsIgnoreCase(modo))) {
+            byte[] archivo = pdfExportService.exportarHistoricoAsistenciasExcel(desde, hasta);
+            return descarga(archivo, XLSX, "historico-asistencias-" + desde + "-a-" + hasta + ".xlsx");
+        }
+        byte[] archivo = pdfExportService.exportarHistoricoFiltradoExcel(
+                modo, socioEfectivo, clienteEfectivo, desde, hasta, historicoTotal);
+        return descarga(archivo, XLSX, construirNombreArchivoHistorico(socioEfectivo, clienteEfectivo, desde, hasta, historicoTotal, ".xlsx"));
+    }
+
+    private static Long resolverSocioSegunModo(String modo, Long socioId) {
+        return socioId;
+    }
+
+    private static Long resolverClienteSegunModo(String modo, Long clienteId) {
+        return clienteId;
+    }
+
+    private static String construirNombreArchivoHistorico(
+            Long socioId, Long clienteId, LocalDate desde, LocalDate hasta, boolean historicoTotal, String extension) {
+        StringBuilder sb = new StringBuilder("historico");
+        if (socioId != null && clienteId != null) {
+            sb.append("-socio-").append(socioId).append("-cliente-").append(clienteId);
+        } else if (socioId != null) {
+            sb.append("-socio-").append(socioId);
+        } else if (clienteId != null) {
+            sb.append("-cliente-").append(clienteId);
+        } else {
+            sb.append("-asistencias");
+        }
+        if (historicoTotal || (desde == null && hasta == null)) {
+            sb.append("-total");
+        } else if (desde != null && hasta != null) {
+            sb.append("-").append(desde).append("-a-").append(hasta);
+        }
+        sb.append(extension);
+        return sb.toString();
     }
 
     @GetMapping("/socios/{id}/historico/pdf")

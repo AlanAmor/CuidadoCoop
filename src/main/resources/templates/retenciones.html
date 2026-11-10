@@ -26,7 +26,8 @@
         <div class="form-grid">
             <div class="field">
                 <label for="socioId">Socio</label>
-                <select id="socioId" name="socioId" required>
+                <select id="socioId" name="socioId" required
+                        data-searchable-select="Buscar socio por apellido, nombre o DNI...">
                     <option value="">Seleccioná un socio</option>
                     <option th:each="socio : ${socios}"
                             th:value="${socio.id}"
@@ -81,7 +82,8 @@
     <form class="content-card filter-card" method="get" th:action="@{/retenciones}" style="margin-top: 22px;">
         <div class="field">
             <label for="socioFiltro">Filtrar por socio</label>
-            <select id="socioFiltro" name="socioFiltro">
+            <select id="socioFiltro" name="socioFiltro"
+                    data-searchable-select="Buscar socio para filtrar...">
                 <option value="">Todos los socios</option>
                 <option th:each="socio : ${socios}"
                         th:value="${socio.id}"
@@ -100,9 +102,13 @@
     </form>
 
     <section class="content-card table-card" style="margin-top: 18px;">
-        <h3>Retenciones registradas</h3>
+        <div class="table-card-header-search">
+            <h3>Retenciones registradas</h3>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-retenciones-registradas"
+                   placeholder="Buscar retención por socio, concepto o motivo...">
+        </div>
         <div class="table-wrap">
-            <table>
+            <table id="tabla-retenciones-registradas">
                 <thead>
                 <tr>
                     <th>Período</th>

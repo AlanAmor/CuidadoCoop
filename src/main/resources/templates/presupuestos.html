@@ -19,7 +19,8 @@
     <form class="content-card form-card" method="get" th:action="@{/presupuestos/pdf}">
         <div class="field">
             <label for="clienteId">Cliente y domicilio</label>
-            <select id="clienteId" name="clienteId" required>
+            <select id="clienteId" name="clienteId" required
+                    data-searchable-select="Buscar cliente por paciente, DNI o domicilio...">
                 <option value="">Seleccioná un cliente</option>
                 <option th:each="cliente : ${clientes}"
                         th:value="${cliente.id}"

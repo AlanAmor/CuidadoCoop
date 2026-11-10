@@ -41,6 +41,18 @@ public class ClienteService {
     }
 
     @Transactional(readOnly = true)
+    public List<Cliente> buscar(String termino, String inicial) {
+        String q = termino == null ? null : termino.trim();
+        String ini = inicial == null ? null : inicial.trim();
+        boolean sinTermino = q == null || q.isEmpty();
+        boolean sinInicial = ini == null || ini.isEmpty();
+        if (sinTermino && sinInicial) {
+            return listar();
+        }
+        return clienteRepository.buscarIndexado(sinTermino ? null : q, sinInicial ? null : ini);
+    }
+
+    @Transactional(readOnly = true)
     public Cliente obtener(Long id) {
         return buscar(id);
     }

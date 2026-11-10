@@ -17,11 +17,13 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
 import java.time.format.TextStyle;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -42,8 +44,28 @@ public class SocioController {
     }
 
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("socios", socioService.listar());
+    public String listar(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "especialidad", required = false) Especialidad especialidad,
+            @RequestParam(name = "estado", required = false) EstadoSocio estado,
+            @RequestParam(name = "inicial", required = false) String inicial,
+            Model model) {
+        List<Socio> todos = socioService.listar();
+        boolean hayFiltro = (q != null && !q.isBlank())
+                || especialidad != null
+                || estado != null
+                || (inicial != null && !inicial.isBlank());
+        List<Socio> filtrados = hayFiltro
+                ? socioService.buscar(q, especialidad, estado, inicial)
+                : todos;
+        model.addAttribute("socios", filtrados);
+        model.addAttribute("totalSocios", todos.size());
+        model.addAttribute("q", q);
+        model.addAttribute("especialidadFiltro", especialidad);
+        model.addAttribute("estadoFiltro", estado);
+        model.addAttribute("inicialFiltro", inicial);
+        model.addAttribute("especialidades", Especialidad.values());
+        model.addAttribute("estados", EstadoSocio.values());
         return "socios";
     }
 

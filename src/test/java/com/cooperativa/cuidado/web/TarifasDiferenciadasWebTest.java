@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -286,6 +287,72 @@ class TarifasDiferenciadasWebTest {
         assertFalse(lunesSemana.isFeriadoNacionalEfectivo());
         assertEquals(0, new BigDecimal("4600.00").compareTo(lunesSemana.getValorHoraAplicado()));
         assertEquals(0, new BigDecimal("3200.00").compareTo(lunesSemana.getValorHoraPagoSocio()));
+    }
+
+    @Test
+    void buscadorIndexadoFiltraSociosYClientesCorrectamente() throws Exception {
+        mockMvc.perform(get("/socios").param("q", "34555666"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Martínez, Lucía")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Buscador indexado de socios")));
+
+        mockMvc.perform(get("/socios").param("q", "Inexistente9999"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Martínez, Lucía"))));
+
+        mockMvc.perform(get("/clientes").param("q", "San Jerónimo"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Marta Sosa")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Buscador indexado de clientes")));
+
+        mockMvc.perform(get("/clientes").param("q", "PacienteInexistente9999"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Marta Sosa"))));
+    }
+
+    @Test
+    void historicoPermiteBuscarGeneralPorSocioPorClienteCruceYPeriodoOHistoricoTotal() throws Exception {
+        LocalDate fechaFutura = LocalDate.now().plusDays(15);
+        asignarTurnoSimple("2026-05-06", "08:00", "16:00", null, false);
+        asignarTurnoSimple(fechaFutura.toString(), "09:00", "17:00", null, false);
+
+        // 1) Histórico general por período (incluye turno futuro si el período lo abarca)
+        mockMvc.perform(get("/asistencias/historico")
+                        .param("desde", "2026-05-01")
+                        .param("hasta", fechaFutura.plusDays(1).toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2026-05-06")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(fechaFutura.toString())));
+
+        // 2) Histórico total: contempla hasta el día de la fecha (NO incluye turnos futuros)
+        mockMvc.perform(get("/asistencias/historico")
+                        .param("socioId", socio.getId().toString())
+                        .param("historicoTotal", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2026-05-06")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<td>" + fechaFutura + "</td>"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Histórico total hasta ")));
+
+        // 3) Histórico de cada cliente en histórico total
+        mockMvc.perform(get("/asistencias/historico")
+                        .param("clienteId", cliente.getId().toString())
+                        .param("historicoTotal", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Histórico de cada cliente por socio")));
+
+        // 4) Histórico de socio por cliente y cliente por socio (PDF y Excel)
+        mockMvc.perform(get("/asistencias/historico/pdf")
+                        .param("socioId", socio.getId().toString())
+                        .param("clienteId", cliente.getId().toString())
+                        .param("historicoTotal", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+
+        mockMvc.perform(get("/asistencias/historico/excel")
+                        .param("clienteId", cliente.getId().toString())
+                        .param("socioId", socio.getId().toString())
+                        .param("historicoTotal", "true"))
+                .andExpect(status().isOk());
     }
 
     private void asignarTurnoSimple(

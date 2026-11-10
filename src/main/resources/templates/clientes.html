@@ -20,6 +20,37 @@
     </section>
     <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
     <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <form class="content-card search-index-card" method="get" th:action="@{/clientes}" data-indexed-search-form="clientes">
+        <input type="hidden" name="inicial" id="filtro-inicial-clientes" th:value="${inicialFiltro}" data-search-initial-input>
+        <div class="search-index-bar search-index-bar-clientes">
+            <div class="field search-index-field">
+                <label for="buscador-clientes">Buscador indexado de clientes</label>
+                <input id="buscador-clientes" name="q" type="search" autocomplete="off"
+                       th:value="${q}"
+                       data-search-input
+                       placeholder="Buscar por paciente, DNI, familiar responsable, domicilio, teléfono, correo o localidad...">
+            </div>
+            <div class="search-index-actions">
+                <button class="button button-secondary" type="submit">Buscar</button>
+                <a class="button button-quiet" th:href="@{/clientes}" data-search-reset>Limpiar</a>
+            </div>
+        </div>
+        <div class="az-index-row">
+            <span class="az-index-label">Índice A–Z:</span>
+            <div class="az-index-pills" data-az-index>
+                <button type="button" class="az-pill is-active" data-letter="">Todos</button>
+                <button type="button" class="az-pill"
+                        th:each="letra : ${ {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','Ñ','O','P','Q','R','S','T','U','V','W','X','Y','Z'} }"
+                        th:attr="data-letter=${letra}"
+                        th:classappend="${inicialFiltro != null and #strings.equalsIgnoreCase(inicialFiltro, letra) ? ' is-active' : ''}"
+                        th:text="${letra}">A</button>
+            </div>
+            <span class="search-index-counter" data-search-counter data-entity-label="clientes"
+                  th:text="|Mostrando ${#lists.size(clientes)} de ${totalClientes != null ? totalClientes : #lists.size(clientes)} clientes|">Mostrando clientes</span>
+        </div>
+    </form>
+
     <div class="content-card table-card">
         <div class="table-wrap">
             <table>
@@ -27,7 +58,10 @@
                 <tr><th>Paciente</th><th>Familiar</th><th>Contacto</th><th>Domicilio / Ubicación</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
-                <tr th:each="cliente : ${clientes}">
+                <tr th:each="cliente : ${clientes}"
+                    data-search-row="clientes"
+                    th:attr="data-search-text=|${cliente.nombrePaciente} ${cliente.dniPaciente != null ? cliente.dniPaciente : ''} ${cliente.nombreFamiliar} ${cliente.telefono} ${cliente.correo != null ? cliente.correo : ''} ${cliente.domicilio} ${cliente.ciudad != null ? cliente.ciudad : ''} ${cliente.localidad != null ? cliente.localidad : ''} ${cliente.codigoPostal != null ? cliente.codigoPostal : ''}|,
+                             data-search-initial=${cliente.nombrePaciente != null and !cliente.nombrePaciente.isEmpty() ? #strings.toUpperCase(#strings.substring(cliente.nombrePaciente, 0, 1)) : ''}">
                     <td>
                         <strong th:text="${cliente.nombrePaciente}"></strong>
                         <div class="muted" style="font-size:0.82rem;"
@@ -61,8 +95,12 @@
                            title="Histórico completo de servicios en Excel">Excel</a>
                     </td>
                 </tr>
+                <tr data-search-empty="clientes" hidden>
+                    <td colspan="5" class="empty-state">No se encontraron clientes que coincidan con la búsqueda indexada.</td>
+                </tr>
                 <tr th:if="${#lists.isEmpty(clientes)}">
-                    <td colspan="5" class="empty-state">Todavía no hay clientes. Creá el primero con "Nuevo cliente".</td>
+                    <td colspan="5" class="empty-state"
+                        th:text="${(q != null and !#strings.isEmpty(q)) or (inicialFiltro != null and !#strings.isEmpty(inicialFiltro)) ? 'No se encontraron clientes para los filtros seleccionados.' : 'Todavía no hay clientes. Creá el primero con &quot;Nuevo cliente&quot;.'}">Todavía no hay clientes. Creá el primero con "Nuevo cliente".</td>
                 </tr>
                 </tbody>
             </table>

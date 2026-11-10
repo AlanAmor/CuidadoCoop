@@ -7,6 +7,7 @@ import com.cooperativa.cuidado.legajo.TipoLegajo;
 import com.cooperativa.cuidado.legajo.service.LegajoService;
 import com.cooperativa.cuidado.recibo.ReciboRetribucionRepository;
 import com.cooperativa.cuidado.retencion.RetencionSocioRepository;
+import com.cooperativa.cuidado.socio.Especialidad;
 import com.cooperativa.cuidado.socio.EstadoSocio;
 import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.socio.SocioRepository;
@@ -46,6 +47,18 @@ public class SocioService {
     @Transactional(readOnly = true)
     public List<Socio> listar() {
         return socioRepository.findAll(Sort.by("apellido", "nombre"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Socio> buscar(String termino, Especialidad especialidad, EstadoSocio estado, String inicial) {
+        String q = termino == null ? null : termino.trim();
+        String ini = inicial == null ? null : inicial.trim();
+        boolean sinTermino = q == null || q.isEmpty();
+        boolean sinInicial = ini == null || ini.isEmpty();
+        if (sinTermino && especialidad == null && estado == null && sinInicial) {
+            return listar();
+        }
+        return socioRepository.buscarIndexado(sinTermino ? null : q, especialidad, estado, sinInicial ? null : ini);
     }
 
     @Transactional

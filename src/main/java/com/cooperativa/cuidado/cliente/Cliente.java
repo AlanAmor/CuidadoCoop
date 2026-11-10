@@ -5,13 +5,22 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 @Entity
-@Table(name = "clientes")
+@Table(
+        name = "clientes",
+        indexes = {
+                @Index(name = "idx_clientes_nombre_paciente", columnList = "nombrePaciente"),
+                @Index(name = "idx_clientes_dni_paciente", columnList = "dni_paciente"),
+                @Index(name = "idx_clientes_nombre_familiar", columnList = "nombreFamiliar"),
+                @Index(name = "idx_clientes_domicilio", columnList = "domicilio")
+        }
+)
 public class Cliente {
 
     @Id

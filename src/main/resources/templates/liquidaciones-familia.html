@@ -167,7 +167,8 @@
         <div class="form-grid">
             <div class="field" style="grid-column: span 2;">
                 <label for="lf-clienteId">Paciente</label>
-                <select id="lf-clienteId" name="clienteId" required>
+                <select id="lf-clienteId" name="clienteId" required
+                        data-searchable-select="Buscar paciente/cliente por nombre, DNI o domicilio...">
                     <option value="">Seleccioná un paciente</option>
                     <option th:each="c : ${clientes}"
                             th:value="${c.id}"
@@ -345,9 +346,13 @@
     </form>
 
     <section class="content-card table-card" style="margin-top: 24px;">
-        <h3>Liquidaciones Familia emitidas</h3>
+        <div class="table-card-header-search">
+            <h3>Liquidaciones Familia emitidas</h3>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-liq-familia-emitidas"
+                   placeholder="Buscar liquidación por paciente o período...">
+        </div>
         <div class="table-wrap">
-            <table>
+            <table id="tabla-liq-familia-emitidas">
                 <thead>
                 <tr>
                     <th>Fecha</th>

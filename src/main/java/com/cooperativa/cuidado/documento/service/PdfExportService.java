@@ -242,6 +242,112 @@ public class PdfExportService {
                 d, h, asistenciaRepository.findAllByClienteIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(clienteId, d, h));
     }
 
+    @Transactional(readOnly = true)
+    public List<Asistencia> consultarHistorico(
+            Long socioId,
+            Long clienteId,
+            LocalDate desde,
+            LocalDate hasta,
+            boolean historicoTotal) {
+        LocalDate hoy = LocalDate.now();
+        LocalDate d = historicoTotal ? desdeOTodo(null) : (desde != null ? desde : hoy.withDayOfMonth(1));
+        LocalDate h = historicoTotal ? hoy : (hasta != null ? hasta : hoy);
+        validarRango(d, h);
+        if (socioId != null && clienteId != null) {
+            buscarSocio(socioId);
+            buscarCliente(clienteId);
+            return asistenciaRepository
+                    .findAllBySocioIdAndClienteIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(socioId, clienteId, d, h);
+        }
+        if (socioId != null) {
+            buscarSocio(socioId);
+            return asistenciaRepository
+                    .findAllBySocioIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(socioId, d, h);
+        }
+        if (clienteId != null) {
+            buscarCliente(clienteId);
+            return asistenciaRepository
+                    .findAllByClienteIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(clienteId, d, h);
+        }
+        return asistenciaRepository.findAllByFechaBetweenOrderByFechaAscHoraInicioAsc(d, h);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportarHistoricoFiltradoPdf(
+            String modo,
+            Long socioId,
+            Long clienteId,
+            LocalDate desde,
+            LocalDate hasta,
+            boolean historicoTotal) {
+        LocalDate hoy = LocalDate.now();
+        List<Asistencia> asistencias = consultarHistorico(socioId, clienteId, desde, hasta, historicoTotal);
+        LocalDate d = historicoTotal || (desde == null && hasta == null) ? null : (desde != null ? desde : hoy.withDayOfMonth(1));
+        LocalDate h = historicoTotal || (desde == null && hasta == null) ? hoy : (hasta != null ? hasta : hoy);
+        return historicoPdf(
+                construirTituloHistorico(modo, socioId, clienteId),
+                construirDetalleHistorico(socioId, clienteId),
+                d,
+                h,
+                asistencias);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportarHistoricoFiltradoExcel(
+            String modo,
+            Long socioId,
+            Long clienteId,
+            LocalDate desde,
+            LocalDate hasta,
+            boolean historicoTotal) {
+        LocalDate hoy = LocalDate.now();
+        List<Asistencia> asistencias = consultarHistorico(socioId, clienteId, desde, hasta, historicoTotal);
+        LocalDate d = historicoTotal ? desdeOTodo(null) : (desde != null ? desde : hoy.withDayOfMonth(1));
+        LocalDate h = historicoTotal ? hoy : (hasta != null ? hasta : hoy);
+        String titulo = construirTituloHistorico(modo, socioId, clienteId);
+        String detalle = construirDetalleHistorico(socioId, clienteId);
+        return historicoExcel(detalle != null ? titulo + " — " + detalle : titulo, d, h, asistencias);
+    }
+
+    private String construirTituloHistorico(String modo, Long socioId, Long clienteId) {
+        if (socioId != null && clienteId != null) {
+            if ("CLIENTE_POR_SOCIO".equalsIgnoreCase(modo)) {
+                return "Histórico de cliente por socio";
+            }
+            return "Histórico de socio por cliente";
+        }
+        if (socioId != null) {
+            return "Histórico de asistencias del socio";
+        }
+        if (clienteId != null) {
+            return "Histórico de servicios del cliente";
+        }
+        if ("SOCIO_POR_CLIENTE".equalsIgnoreCase(modo)) {
+            return "Histórico general de socios por cliente";
+        }
+        if ("CLIENTE_POR_SOCIO".equalsIgnoreCase(modo)) {
+            return "Histórico general de clientes por socio";
+        }
+        return "Histórico de asistencias";
+    }
+
+    private String construirDetalleHistorico(Long socioId, Long clienteId) {
+        Socio socio = socioId != null ? buscarSocio(socioId) : null;
+        Cliente cliente = clienteId != null ? buscarCliente(clienteId) : null;
+        if (socio != null && cliente != null) {
+            return "Socio: " + socio.getApellido() + ", " + socio.getNombre() + " (DNI " + socio.getDni() + ")"
+                    + " | Paciente: " + cliente.getNombrePaciente() + " (" + cliente.getDomicilio() + ")";
+        }
+        if (socio != null) {
+            return "Socio: " + socio.getApellido() + ", " + socio.getNombre() + " (DNI " + socio.getDni() + ")";
+        }
+        if (cliente != null) {
+            return "Paciente: " + cliente.getNombrePaciente() + " | Familiar: " + cliente.getNombreFamiliar()
+                    + " | Domicilio: " + cliente.getDomicilio();
+        }
+        return null;
+    }
+
     private Socio buscarSocio(Long id) {
         return socioRepository.findById(id).orElseThrow(() -> new RecursoNoEncontradoException(
                 "El socio seleccionado ya no existe. Actualizá la lista e intentá nuevamente."));
@@ -257,7 +363,7 @@ public class PdfExportService {
     }
 
     private static LocalDate hastaOTodo(LocalDate hasta) {
-        return hasta != null ? hasta : LocalDate.of(2999, 12, 31);
+        return hasta != null ? hasta : LocalDate.now();
     }
 
     private byte[] historicoPdf(

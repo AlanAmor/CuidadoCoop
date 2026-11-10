@@ -6,13 +6,32 @@
     <nav aria-label="Navegación principal">
         <a th:href="@{/}">Inicio</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'ASIGNAR_TURNOS')}" th:href="@{/asignaciones/nueva}">Asignar turno</a>
-        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS')}" th:href="@{/socios}">Socios</a>
-        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}" th:href="@{/clientes}">Clientes</a>
+
+        <div class="nav-dropdown"
+             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}">
+            <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+                Socios <span class="nav-dropdown-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS')}" th:href="@{/socios}">Socios</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones}">Liquidaciones</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/retenciones}">Retenciones</a>
+            </div>
+        </div>
+
+        <div class="nav-dropdown"
+             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}">
+            <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
+                Clientes <span class="nav-dropdown-caret" aria-hidden="true">▾</span>
+            </button>
+            <div class="nav-dropdown-menu" role="menu">
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}" th:href="@{/clientes}">Clientes</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones-familia}">Liquidación Familia</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}" th:href="@{/presupuestos}">Presupuestos</a>
+            </div>
+        </div>
+
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_SERVICIOS')}" th:href="@{/servicios}">Servicios</a>
-        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones}">Liquidaciones</a>
-        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones-familia}">Liquidación Familia</a>
-        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/retenciones}">Retenciones</a>
-        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}" th:href="@{/presupuestos}">Presupuestos</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}" th:href="@{/asistencias/historico}">Histórico</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'VER_ESTADISTICAS')}" th:href="@{/estadisticas}">Estadísticas</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_CUENTAS')}" th:href="@{/cuentas}">Cuentas</a>
@@ -24,8 +43,20 @@
             <button type="submit" class="button button-quiet button-sm">Salir</button>
         </form>
     </div>
-    <script th:src="@{/js/confirmar.js}" defer></script>
+    <script th:src="@{/js/confirmar.js(v=7)}" defer></script>
     <script th:src="@{/js/legajo.js}" defer></script>
+    <style>
+        .nav-dropdown { position: relative; display: inline-flex; align-items: center; }
+        .nav-dropdown-toggle { appearance: none; background: transparent; border: none; padding: 6px 4px; margin: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; transition: color 0.15s ease; }
+        .nav-dropdown-toggle:hover, .nav-dropdown.is-open .nav-dropdown-toggle { color: var(--green); }
+        .nav-dropdown-caret { font-size: 11px; line-height: 1; transition: transform 0.15s ease; }
+        .nav-dropdown:hover .nav-dropdown-caret, .nav-dropdown.is-open .nav-dropdown-caret { transform: rotate(180deg); }
+        .nav-dropdown-menu { position: absolute; top: calc(100% + 2px); left: 0; min-width: 195px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 26px rgba(17, 45, 36, 0.12); padding: 6px; display: none; flex-direction: column; gap: 2px; z-index: 1000; }
+        .nav-dropdown::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 8px; }
+        .nav-dropdown:hover .nav-dropdown-menu, .nav-dropdown.is-open .nav-dropdown-menu { display: flex; }
+        .nav-dropdown-menu a { display: block; padding: 8px 12px; border-radius: 7px; color: var(--ink); font-size: 13.5px; font-weight: 500; white-space: nowrap; }
+        .nav-dropdown-menu a:hover { background: var(--green-soft); color: var(--green-dark); }
+    </style>
 </header>
 
 <section th:fragment="panelLegajo" class="content-card form-card legajo-panel"

@@ -27,25 +27,32 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
             LocalDate desde,
             LocalDate hasta);
 
-    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "cliente"})
+    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "servicioDomicilio.tipoServicio", "cliente"})
     List<Asistencia> findAllByFechaBetweenOrderByFechaAscHoraInicioAsc(
             LocalDate desde,
             LocalDate hasta);
 
-    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "cliente"})
+    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "servicioDomicilio.tipoServicio", "cliente"})
     List<Asistencia> findAllBySocioIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(
             Long socioId,
             LocalDate desde,
             LocalDate hasta);
 
-    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "cliente"})
+    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "servicioDomicilio.tipoServicio", "cliente"})
     List<Asistencia> findAllByClienteIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(
             Long clienteId,
             LocalDate desde,
             LocalDate hasta);
 
-    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "cliente"})
+    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "servicioDomicilio.tipoServicio", "cliente"})
     List<Asistencia> findAllByFechaBetweenOrderByHoraInicioAsc(
+            LocalDate desde,
+            LocalDate hasta);
+
+    @EntityGraph(attributePaths = {"socio", "servicioDomicilio", "servicioDomicilio.tipoServicio", "cliente"})
+    List<Asistencia> findAllBySocioIdAndClienteIdAndFechaBetweenOrderByFechaAscHoraInicioAsc(
+            Long socioId,
+            Long clienteId,
             LocalDate desde,
             LocalDate hasta);
 

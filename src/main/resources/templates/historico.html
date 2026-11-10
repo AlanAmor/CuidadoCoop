@@ -4,39 +4,560 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Histórico de asistencias | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=10)}">
+    <style>
+        [hidden] {
+            display: none !important;
+        }
+        .historico-periodo-box {
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fbfcfb;
+        }
+        .historico-alcance-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+        .historico-alcance-btn {
+            appearance: none;
+            font: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border: 1.5px solid var(--line);
+            border-radius: 999px;
+            background: #ffffff;
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.14s ease;
+        }
+        .historico-alcance-btn:hover {
+            border-color: var(--green);
+        }
+        .historico-alcance-btn.is-selected {
+            border-color: var(--green);
+            background: var(--green-soft);
+            color: var(--green-dark);
+        }
+    </style>
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
-<main class="container narrow-container">
+<main class="container">
     <section class="page-heading">
         <div>
-            <p class="eyebrow">AUDITORÍA</p>
+            <p class="eyebrow">AUDITORÍA Y CONSULTA HISTÓRICA</p>
             <h1>Histórico de asistencias</h1>
-            <p class="muted">Exportá el detalle de turnos con horas y valor hora histórico aplicado.</p>
+            <p class="muted">Consultá en pantalla y exportá en PDF o Excel el histórico general, por socio, por cliente, de socio por cliente o de cliente por socio, eligiendo un período o el histórico total.</p>
         </div>
     </section>
-    <form class="content-card form-card" method="get">
-        <div class="form-grid">
-            <div class="field">
-                <label for="desde">Desde</label>
-                <input id="desde" name="desde" type="date" th:value="${desde}" required>
+
+    <form class="content-card form-card" method="get" th:action="@{/asistencias/historico}" id="form-historico">
+        <input type="hidden" name="historicoTotal" id="input-historicoTotal" th:value="${historicoTotal}">
+
+        <div class="form-grid" id="box-filtros-entidad">
+            <div class="field" id="field-historico-socio">
+                <label for="historico-socioId" id="lbl-historico-socio">Socio</label>
+                <select id="historico-socioId" name="socioId"
+                        data-searchable-select="Buscar socio por apellido, nombre o DNI...">
+                    <option value="">Todos los socios</option>
+                    <option th:each="s : ${socios}"
+                            th:value="${s.id}"
+                            th:selected="${socioId != null and socioId == s.id}"
+                            th:text="|${s.apellido}, ${s.nombre} · DNI ${s.dni} (${s.especialidad.etiqueta})|"></option>
+                </select>
             </div>
-            <div class="field">
-                <label for="hasta">Hasta</label>
-                <input id="hasta" name="hasta" type="date" th:value="${hasta}" required>
+            <div class="field" id="field-historico-cliente">
+                <label for="historico-clienteId" id="lbl-historico-cliente">Cliente / Paciente</label>
+                <select id="historico-clienteId" name="clienteId"
+                        data-searchable-select="Buscar cliente por paciente, DNI o domicilio...">
+                    <option value="">Todos los clientes</option>
+                    <option th:each="c : ${clientes}"
+                            th:value="${c.id}"
+                            th:selected="${clienteId != null and clienteId == c.id}"
+                            th:text="|${c.nombrePaciente}${c.dniPaciente != null and !#strings.isEmpty(c.dniPaciente) ? ' · DNI ' + c.dniPaciente : ''} · ${c.domicilio}|"></option>
+                </select>
             </div>
         </div>
-        <p class="form-hint">El DNI se incluye como identificador del socio. Compartí estos archivos únicamente con personas autorizadas.</p>
-        <div class="form-actions">
+
+        <div class="historico-periodo-box" style="margin-top: 16px;">
+            <div class="historico-alcance-row">
+                <span class="az-index-label">Alcance temporal:</span>
+                <button type="button" class="historico-alcance-btn" data-alcance-btn="false"
+                        th:classappend="${!historicoTotal ? ' is-selected' : ''}">
+                    📅 Elegir período (rango de fechas / mes)
+                </button>
+                <button type="button" class="historico-alcance-btn" data-alcance-btn="true"
+                        th:classappend="${historicoTotal ? ' is-selected' : ''}">
+                    🗂️ Histórico total (hasta el día de la fecha)
+                </button>
+            </div>
+
+            <div class="form-grid" id="box-fechas-periodo" style="margin-top: 12px;" th:hidden="${historicoTotal}">
+                <div class="field">
+                    <label for="desde">Desde</label>
+                    <input id="desde" name="desde" type="date" th:value="${desde}" th:required="${!historicoTotal}">
+                </div>
+                <div class="field">
+                    <label for="hasta">Hasta</label>
+                    <input id="hasta" name="hasta" type="date" th:value="${hasta}" th:required="${!historicoTotal}">
+                </div>
+                <div class="field">
+                    <label for="mesRapido">Seleccionar mes completo (opcional)</label>
+                    <input id="mesRapido" type="month" placeholder="Ej: 2026-05">
+                </div>
+            </div>
+        </div>
+
+        <p class="form-hint" style="margin-top: 12px;">
+            Dejá ambos en "Todos" para el histórico general, elegí un socio o un cliente para su histórico individual, o seleccioná ambos para cruzar socio por cliente / cliente por socio.
+        </p>
+
+        <div class="form-actions" style="flex-wrap: wrap; gap: 10px;">
+            <button class="button button-primary" type="submit" formaction="/asistencias/historico" id="btn-buscar-historico">
+                Buscar en pantalla
+            </button>
             <button class="button button-secondary" type="submit" formaction="/asistencias/historico/pdf">
                 Descargar PDF
             </button>
-            <button class="button button-primary" type="submit" formaction="/asistencias/historico/excel">
-                Descargar Excel
+            <button class="button button-secondary" type="submit" formaction="/asistencias/historico/excel">
+                Descargar Excel (.xlsx)
             </button>
+            <a class="button button-quiet" th:href="@{/asistencias/historico}">Restablecer</a>
         </div>
     </form>
+
+    <section class="metric-grid" style="margin-top: 22px;">
+        <article class="metric-card">
+            <span>Turnos en el histórico</span>
+            <strong id="metric-turnos" th:text="${totalTurnos}">0</strong>
+            <small class="muted" th:text="${historicoTotal ? 'Histórico total hasta ' + hoyConsulta : 'Del ' + desde + ' al ' + hasta}">Período</small>
+        </article>
+        <article class="metric-card">
+            <span>Horas totales trabajadas</span>
+            <strong id="metric-horas" th:text="|${#numbers.formatDecimal(totalHoras, 1, 'POINT', 2, 'COMMA')} hs|">0,00 hs</strong>
+            <small class="muted">Suma de guardias registradas</small>
+        </article>
+        <article class="metric-card">
+            <span>Total servicio cliente</span>
+            <strong id="metric-cliente" th:text="|$ ${#numbers.formatDecimal(totalImporteCliente, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong>
+            <small class="muted">Según valor hora cliente aplicado</small>
+        </article>
+        <article class="metric-card">
+            <span>Total retorno socio</span>
+            <strong id="metric-socio" th:text="|$ ${#numbers.formatDecimal(totalImporteSocio, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong>
+            <small class="muted">Según valor hora socio aplicado</small>
+        </article>
+    </section>
+
+    <!-- 1) Resumen por cada Socio -->
+    <section class="content-card table-card" id="sec-resumen-socios" style="margin-top: 22px;">
+        <div class="table-card-header-search">
+            <div>
+                <h3 style="margin:0;">Resumen histórico de cada socio</h3>
+                <p class="muted" style="margin:4px 0 0; font-size:13px;">Totales acumulados por socio y acceso directo a su histórico en PDF o Excel.</p>
+            </div>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-resumen-socios"
+                   placeholder="Filtrar socio por nombre o DNI...">
+        </div>
+        <div class="table-wrap">
+            <table id="tabla-resumen-socios">
+                <thead>
+                <tr>
+                    <th>Socio</th>
+                    <th>DNI</th>
+                    <th>Especialidad</th>
+                    <th>Clientes atendidos</th>
+                    <th>Turnos</th>
+                    <th>Horas totales</th>
+                    <th>Total retorno socio</th>
+                    <th>Total servicio cliente</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="rs : ${resumenPorSocio}" th:attr="data-socio-id=${rs.socio.id}">
+                    <td><strong th:text="|${rs.socio.apellido}, ${rs.socio.nombre}|">Socio</strong></td>
+                    <td th:text="${rs.socio.dni}">DNI</td>
+                    <td th:text="${rs.socio.especialidad.etiqueta}">Especialidad</td>
+                    <td th:text="${rs.cantidadClientes}">1</td>
+                    <td th:text="${rs.turnos}">1</td>
+                    <td th:text="|${#numbers.formatDecimal(rs.horas, 1, 'POINT', 2, 'COMMA')} hs|">0,00 hs</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(rs.importeSocio, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong></td>
+                    <td th:text="|$ ${#numbers.formatDecimal(rs.importeCliente, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td class="row-actions">
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico(socioId=${rs.socio.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Filtrar socio
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/pdf(socioId=${rs.socio.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            PDF
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/excel(socioId=${rs.socio.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Excel
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(resumenPorSocio)}">
+                    <td colspan="9" class="empty-state">No hay asistencias registradas para socios en el período seleccionado.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 2) Resumen por cada Cliente -->
+    <section class="content-card table-card" id="sec-resumen-clientes" style="margin-top: 22px;">
+        <div class="table-card-header-search">
+            <div>
+                <h3 style="margin:0;">Resumen histórico de cada cliente</h3>
+                <p class="muted" style="margin:4px 0 0; font-size:13px;">Totales acumulados por paciente/familia y acceso directo a su histórico en PDF o Excel.</p>
+            </div>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-resumen-clientes"
+                   placeholder="Filtrar cliente por paciente o domicilio...">
+        </div>
+        <div class="table-wrap">
+            <table id="tabla-resumen-clientes">
+                <thead>
+                <tr>
+                    <th>Paciente</th>
+                    <th>Familiar</th>
+                    <th>Domicilio</th>
+                    <th>Socios asignados</th>
+                    <th>Turnos</th>
+                    <th>Horas totales</th>
+                    <th>Total servicio cliente</th>
+                    <th>Total retorno socio</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="rc : ${resumenPorCliente}" th:attr="data-cliente-id=${rc.cliente.id}">
+                    <td>
+                        <strong th:text="${rc.cliente.nombrePaciente}">Paciente</strong>
+                        <small class="muted" style="display:block;"
+                               th:if="${rc.cliente.dniPaciente != null and !#strings.isEmpty(rc.cliente.dniPaciente)}"
+                               th:text="|DNI ${rc.cliente.dniPaciente}|"></small>
+                    </td>
+                    <td th:text="${rc.cliente.nombreFamiliar}">Familiar</td>
+                    <td th:text="${rc.cliente.domicilio}">Domicilio</td>
+                    <td th:text="${rc.cantidadSocios}">1</td>
+                    <td th:text="${rc.turnos}">1</td>
+                    <td th:text="|${#numbers.formatDecimal(rc.horas, 1, 'POINT', 2, 'COMMA')} hs|">0,00 hs</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(rc.importeCliente, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong></td>
+                    <td th:text="|$ ${#numbers.formatDecimal(rc.importeSocio, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td class="row-actions">
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico(clienteId=${rc.cliente.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Filtrar cliente
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/pdf(clienteId=${rc.cliente.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            PDF
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/excel(clienteId=${rc.cliente.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Excel
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(resumenPorCliente)}">
+                    <td colspan="9" class="empty-state">No hay asistencias registradas para clientes en el período seleccionado.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 3) Desglose Socio por Cliente -->
+    <section class="content-card table-card" id="sec-socio-por-cliente" style="margin-top: 22px;">
+        <div class="table-card-header-search">
+            <div>
+                <h3 style="margin:0;">Histórico de cada socio por cliente</h3>
+                <p class="muted" style="margin:4px 0 0; font-size:13px;">Detalle agrupado de horas e importes de cada socio en cada domicilio/cliente atendido.</p>
+            </div>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-socio-por-cliente"
+                   placeholder="Buscar socio o cliente...">
+        </div>
+        <div class="table-wrap">
+            <table id="tabla-socio-por-cliente">
+                <thead>
+                <tr>
+                    <th>Socio</th>
+                    <th>DNI Socio</th>
+                    <th>Cliente / Paciente</th>
+                    <th>Domicilio</th>
+                    <th>Turnos</th>
+                    <th>Horas totales</th>
+                    <th>Total retorno socio</th>
+                    <th>Total servicio cliente</th>
+                    <th>Exportar cruce</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="rel : ${resumenSocioPorCliente}"
+                    th:attr="data-socio-id=${rel.socio.id},data-cliente-id=${rel.cliente.id}">
+                    <td><strong th:text="|${rel.socio.apellido}, ${rel.socio.nombre}|">Socio</strong></td>
+                    <td th:text="${rel.socio.dni}">DNI</td>
+                    <td><strong th:text="${rel.cliente.nombrePaciente}">Paciente</strong></td>
+                    <td th:text="${rel.cliente.domicilio}">Domicilio</td>
+                    <td th:text="${rel.turnos}">1</td>
+                    <td th:text="|${#numbers.formatDecimal(rel.horas, 1, 'POINT', 2, 'COMMA')} hs|">0,00 hs</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(rel.importeSocio, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong></td>
+                    <td th:text="|$ ${#numbers.formatDecimal(rel.importeCliente, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td class="row-actions">
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico(socioId=${rel.socio.id},clienteId=${rel.cliente.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Filtrar turnos
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/pdf(socioId=${rel.socio.id},clienteId=${rel.cliente.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            PDF
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/excel(socioId=${rel.socio.id},clienteId=${rel.cliente.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Excel
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(resumenSocioPorCliente)}">
+                    <td colspan="9" class="empty-state">No hay cruces de socio por cliente en el período seleccionado.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 4) Desglose Cliente por Socio -->
+    <section class="content-card table-card" id="sec-cliente-por-socio" style="margin-top: 22px;">
+        <div class="table-card-header-search">
+            <div>
+                <h3 style="margin:0;">Histórico de cada cliente por socio</h3>
+                <p class="muted" style="margin:4px 0 0; font-size:13px;">Detalle agrupado de qué socios cuidaron a cada paciente, cantidad de guardias, horas e importes.</p>
+            </div>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-cliente-por-socio"
+                   placeholder="Buscar cliente o socio...">
+        </div>
+        <div class="table-wrap">
+            <table id="tabla-cliente-por-socio">
+                <thead>
+                <tr>
+                    <th>Cliente / Paciente</th>
+                    <th>Domicilio</th>
+                    <th>Socio asignado</th>
+                    <th>DNI Socio</th>
+                    <th>Turnos</th>
+                    <th>Horas totales</th>
+                    <th>Total servicio cliente</th>
+                    <th>Total retorno socio</th>
+                    <th>Exportar cruce</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="rel : ${resumenClientePorSocio}"
+                    th:attr="data-socio-id=${rel.socio.id},data-cliente-id=${rel.cliente.id}">
+                    <td>
+                        <strong th:text="${rel.cliente.nombrePaciente}">Paciente</strong>
+                        <small class="muted" style="display:block;" th:text="|Familiar: ${rel.cliente.nombreFamiliar}|"></small>
+                    </td>
+                    <td th:text="${rel.cliente.domicilio}">Domicilio</td>
+                    <td><strong th:text="|${rel.socio.apellido}, ${rel.socio.nombre}|">Socio</strong></td>
+                    <td th:text="${rel.socio.dni}">DNI</td>
+                    <td th:text="${rel.turnos}">1</td>
+                    <td th:text="|${#numbers.formatDecimal(rel.horas, 1, 'POINT', 2, 'COMMA')} hs|">0,00 hs</td>
+                    <td><strong th:text="|$ ${#numbers.formatDecimal(rel.importeCliente, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</strong></td>
+                    <td th:text="|$ ${#numbers.formatDecimal(rel.importeSocio, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td class="row-actions">
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico(clienteId=${rel.cliente.id},socioId=${rel.socio.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Filtrar turnos
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/pdf(clienteId=${rel.cliente.id},socioId=${rel.socio.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            PDF
+                        </a>
+                        <a class="button button-secondary button-sm"
+                           th:href="@{/asistencias/historico/excel(clienteId=${rel.cliente.id},socioId=${rel.socio.id},historicoTotal=${historicoTotal},desde=${desde},hasta=${hasta})}">
+                            Excel
+                        </a>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(resumenClientePorSocio)}">
+                    <td colspan="9" class="empty-state">No hay cruces de cliente por socio en el período seleccionado.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 5) Listado detallado de turnos del histórico -->
+    <section class="content-card table-card" style="margin-top: 22px;">
+        <div class="table-card-header-search">
+            <div>
+                <h3 style="margin:0;">Detalle de turnos registrados</h3>
+                <p class="muted" style="margin:4px 0 0; font-size:13px;"
+                   th:text="|${totalTurnos} turnos encontrados (${historicoTotal ? 'Histórico total hasta ' + hoyConsulta : 'Período ' + desde + ' al ' + hasta})|"></p>
+            </div>
+            <input type="search" class="quick-table-search" data-quick-table-filter="tabla-detalle-historico"
+                   placeholder="Buscar en el detalle por fecha, socio, paciente o servicio...">
+        </div>
+        <div class="table-wrap">
+            <table id="tabla-detalle-historico">
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Socio</th>
+                    <th>DNI</th>
+                    <th>Paciente / Domicilio</th>
+                    <th>Servicio</th>
+                    <th>Horario</th>
+                    <th>Horas</th>
+                    <th>Valor hora cliente</th>
+                    <th>Valor hora socio</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="a : ${asistencias}"
+                    th:attr="data-socio-id=${a.socio.id},data-cliente-id=${a.cliente.id},data-horas=${a.horasTotales},data-vh-cliente=${a.valorHoraAplicado},data-vh-socio=${a.valorHoraPagoSocio != null ? a.valorHoraPagoSocio : a.valorHoraAplicado}">
+                    <td th:text="${a.fecha}">2026-05-01</td>
+                    <td><strong th:text="|${a.socio.apellido}, ${a.socio.nombre}|">Socio</strong></td>
+                    <td th:text="${a.socio.dni}">DNI</td>
+                    <td>
+                        <strong th:text="${a.cliente.nombrePaciente}">Paciente</strong>
+                        <small class="muted" style="display:block;" th:text="${a.cliente.domicilio}">Domicilio</small>
+                    </td>
+                    <td>
+                        <span th:text="${a.servicioDomicilio.tipoServicio.etiqueta}">Servicio</span>
+                        <span class="badge" th:if="${a.feriadoNacionalEfectivo}" style="margin-left:4px;">Feriado</span>
+                    </td>
+                    <td>
+                        <span th:text="|${a.horaInicio} - ${a.horaFin}|">08:00 - 16:00</span>
+                        <small class="muted" style="display:block;"
+                               th:if="${a.marcacionEntrada != null or a.marcacionSalida != null}"
+                               th:text="|Fichaje: ${a.marcacionEntrada != null ? a.marcacionEntrada : '--:--'} a ${a.marcacionSalida != null ? a.marcacionSalida : '--:--'}|"></small>
+                    </td>
+                    <td th:text="|${#numbers.formatDecimal(a.horasTotales, 1, 'POINT', 2, 'COMMA')} hs|">8,00 hs</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(a.valorHoraAplicado, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                    <td th:text="|$ ${#numbers.formatDecimal(a.valorHoraPagoSocio != null ? a.valorHoraPagoSocio : a.valorHoraAplicado, 1, 'POINT', 2, 'COMMA')}|">$ 0,00</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(asistencias)}">
+                    <td colspan="9" class="empty-state">No hay asistencias registradas para los criterios y el período seleccionados.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </main>
+<script>
+(() => {
+    const form = document.getElementById('form-historico');
+    const inpTotal = document.getElementById('input-historicoTotal');
+    const alcanceBtns = Array.from(document.querySelectorAll('[data-alcance-btn]'));
+
+    const selSocio = document.getElementById('historico-socioId');
+    const selCliente = document.getElementById('historico-clienteId');
+
+    const boxFechas = document.getElementById('box-fechas-periodo');
+    const inpDesde = document.getElementById('desde');
+    const inpHasta = document.getElementById('hasta');
+    const inpMesRapido = document.getElementById('mesRapido');
+
+    function filterRowsBySelectedEntities() {
+        const sId = selSocio && selSocio.value ? selSocio.value : '';
+        const cId = selCliente && selCliente.value ? selCliente.value : '';
+
+        document.querySelectorAll('#tabla-resumen-socios tbody tr[data-socio-id]').forEach(tr => {
+            tr.hidden = Boolean(sId && tr.getAttribute('data-socio-id') !== sId);
+        });
+        document.querySelectorAll('#tabla-resumen-clientes tbody tr[data-cliente-id]').forEach(tr => {
+            tr.hidden = Boolean(cId && tr.getAttribute('data-cliente-id') !== cId);
+        });
+        document.querySelectorAll('#tabla-socio-por-cliente tbody tr[data-socio-id]').forEach(tr => {
+            const matchS = !sId || tr.getAttribute('data-socio-id') === sId;
+            const matchC = !cId || tr.getAttribute('data-cliente-id') === cId;
+            tr.hidden = !(matchS && matchC);
+        });
+        document.querySelectorAll('#tabla-cliente-por-socio tbody tr[data-cliente-id]').forEach(tr => {
+            const matchS = !sId || tr.getAttribute('data-socio-id') === sId;
+            const matchC = !cId || tr.getAttribute('data-cliente-id') === cId;
+            tr.hidden = !(matchS && matchC);
+        });
+
+        let turnos = 0;
+        let horas = 0;
+        let impCliente = 0;
+        let impSocio = 0;
+
+        document.querySelectorAll('#tabla-detalle-historico tbody tr[data-socio-id]').forEach(tr => {
+            const matchS = !sId || tr.getAttribute('data-socio-id') === sId;
+            const matchC = !cId || tr.getAttribute('data-cliente-id') === cId;
+            const show = matchS && matchC;
+            tr.hidden = !show;
+            if (show) {
+                turnos++;
+                const h = Number(tr.getAttribute('data-horas') || 0);
+                const vCli = Number(tr.getAttribute('data-vh-cliente') || 0);
+                const vSoc = Number(tr.getAttribute('data-vh-socio') || 0);
+                horas += h;
+                impCliente += h * vCli;
+                impSocio += h * vSoc;
+            }
+        });
+
+        const fmtDec = n => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const elTurnos = document.getElementById('metric-turnos');
+        const elHoras = document.getElementById('metric-horas');
+        const elCli = document.getElementById('metric-cliente');
+        const elSoc = document.getElementById('metric-socio');
+        if (elTurnos) elTurnos.textContent = String(turnos);
+        if (elHoras) elHoras.textContent = fmtDec(horas) + ' hs';
+        if (elCli) elCli.textContent = '$ ' + fmtDec(impCliente);
+        if (elSoc) elSoc.textContent = '$ ' + fmtDec(impSocio);
+    }
+
+    function syncAlcanceUI() {
+        const esTotal = inpTotal.value === 'true';
+        boxFechas.hidden = esTotal;
+        inpDesde.required = !esTotal;
+        inpHasta.required = !esTotal;
+        alcanceBtns.forEach(btn => {
+            btn.classList.toggle('is-selected', btn.getAttribute('data-alcance-btn') === String(esTotal));
+        });
+    }
+
+    alcanceBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            inpTotal.value = btn.getAttribute('data-alcance-btn');
+            syncAlcanceUI();
+            form.submit();
+        });
+    });
+
+    if (selSocio) selSocio.addEventListener('change', filterRowsBySelectedEntities);
+    if (selCliente) selCliente.addEventListener('change', filterRowsBySelectedEntities);
+
+    if (inpMesRapido) {
+        inpMesRapido.addEventListener('change', () => {
+            const val = inpMesRapido.value;
+            if (!val || !/^\d{4}-\d{2}$/.test(val)) return;
+            const [y, m] = val.split('-').map(Number);
+            const ultimoDia = new Date(y, m, 0).getDate();
+            inpDesde.value = `${val}-01`;
+            inpHasta.value = `${val}-${String(ultimoDia).padStart(2, '0')}`;
+        });
+    }
+
+    syncAlcanceUI();
+    filterRowsBySelectedEntities();
+})();
+</script>
 </body>
 </html>

@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/clientes")
@@ -33,8 +36,17 @@ public class ClienteController {
     }
 
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("clientes", clienteService.listar());
+    public String listar(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "inicial", required = false) String inicial,
+            Model model) {
+        List<Cliente> todos = clienteService.listar();
+        boolean hayFiltro = (q != null && !q.isBlank()) || (inicial != null && !inicial.isBlank());
+        List<Cliente> filtrados = hayFiltro ? clienteService.buscar(q, inicial) : todos;
+        model.addAttribute("clientes", filtrados);
+        model.addAttribute("totalClientes", todos.size());
+        model.addAttribute("q", q);
+        model.addAttribute("inicialFiltro", inicial);
         return "clientes";
     }
 

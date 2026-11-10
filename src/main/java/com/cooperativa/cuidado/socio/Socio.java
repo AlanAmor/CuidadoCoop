@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
@@ -24,7 +25,15 @@ import java.util.EnumSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "socios")
+@Table(
+        name = "socios",
+        indexes = {
+                @Index(name = "idx_socios_apellido_nombre", columnList = "apellido, nombre"),
+                @Index(name = "idx_socios_dni", columnList = "dni"),
+                @Index(name = "idx_socios_especialidad", columnList = "especialidad"),
+                @Index(name = "idx_socios_estado", columnList = "estado")
+        }
+)
 public class Socio {
 
     @Id

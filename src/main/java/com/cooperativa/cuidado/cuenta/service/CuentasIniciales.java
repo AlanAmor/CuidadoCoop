@@ -11,6 +11,7 @@ import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.socio.SocioRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,26 +26,39 @@ public class CuentasIniciales implements ApplicationRunner {
     private final UsuarioCuentaRepository usuarioRepository;
     private final SocioRepository socioRepository;
     private final PasswordHasher passwordHasher;
+    private final JdbcTemplate jdbcTemplate;
 
     public CuentasIniciales(
             RolUsuarioRepository rolRepository,
             UsuarioCuentaRepository usuarioRepository,
             SocioRepository socioRepository,
-            PasswordHasher passwordHasher) {
+            PasswordHasher passwordHasher,
+            JdbcTemplate jdbcTemplate) {
         this.rolRepository = rolRepository;
         this.usuarioRepository = usuarioRepository;
         this.socioRepository = socioRepository;
         this.passwordHasher = passwordHasher;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE rol_permisos MODIFY COLUMN permiso VARCHAR(60) NOT NULL");
+        } catch (Exception ignored) {
+            // Ignorado en motores que no usan sintaxis MODIFY COLUMN (ej. H2 en tests)
+        }
+
         RolUsuario rolAdmin = asegurarRol(
                 "ADMIN",
                 false,
                 true,
                 EnumSet.allOf(Permiso.class));
+        if (rolAdmin.getPermisos().size() < Permiso.values().length) {
+            rolAdmin.setPermisos(EnumSet.allOf(Permiso.class));
+            rolAdmin = rolRepository.save(rolAdmin);
+        }
 
         RolUsuario rolAyudante = asegurarRol(
                 "AYUDANTE",

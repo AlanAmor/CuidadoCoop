@@ -143,7 +143,7 @@
         <div class="calendar-error" id="calendar-error" role="alert" hidden></div>
         <div class="alert alert-success" id="calendar-notice" role="status" hidden></div>
         <div class="calendar-scroll" id="calendar-grid" aria-live="polite"
-             th:attr="data-puede-modificar=${@seguridad.tienePermiso(usuarioActual, 'MODIFICAR_TURNOS')},data-puede-eliminar=${@seguridad.tienePermiso(usuarioActual, 'ELIMINAR_TURNOS')},data-es-admin=${@seguridad.esAdmin(usuarioActual)},data-usuario-dni=${usuarioActual != null ? usuarioActual.dni : ''},data-vista-socio=${vistaSocioPropia},data-sin-turnos-totales=${sinTurnosAsignados}"></div>
+             th:attr="data-puede-modificar=${@seguridad.tienePermiso(usuarioActual, 'MODIFICAR_TURNOS')},data-puede-eliminar=${@seguridad.tienePermiso(usuarioActual, 'ELIMINAR_TURNOS')},data-es-admin=${@seguridad.esAdmin(usuarioActual) or @seguridad.tienePermiso(usuarioActual, 'GESTIONAR_MARCACIONES_TURNOS')},data-usuario-dni=${usuarioActual != null ? usuarioActual.dni : ''},data-vista-socio=${vistaSocioPropia},data-sin-turnos-totales=${sinTurnosAsignados}"></div>
         <section class="calendar-detail" id="calendar-detail" aria-label="Detalle del turno" hidden></section>
 
         <div class="availability-panels" th:if="${!vistaSocioPropia}">

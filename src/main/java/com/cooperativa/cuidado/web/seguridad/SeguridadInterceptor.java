@@ -120,8 +120,13 @@ public class SeguridadInterceptor implements HandlerInterceptor {
         if (path.startsWith("/estadisticas")) {
             return Permiso.VER_ESTADISTICAS;
         }
+        if (path.startsWith("/liquidaciones-familia")) {
+            return Permiso.REALIZAR_LIQUIDACIONES_FAMILIA;
+        }
+        if (path.startsWith("/retenciones")) {
+            return Permiso.GESTIONAR_RETENCIONES;
+        }
         if (path.startsWith("/liquidaciones")
-                || path.startsWith("/retenciones")
                 || path.startsWith("/api/liquidaciones")) {
             return Permiso.REALIZAR_LIQUIDACIONES;
         }
@@ -164,9 +169,11 @@ public class SeguridadInterceptor implements HandlerInterceptor {
         if (path.startsWith("/clientes")) {
             return Permiso.AGREGAR_CLIENTES;
         }
+        if (path.startsWith("/feriados")) {
+            return Permiso.GESTIONAR_FERIADOS;
+        }
         if (path.startsWith("/servicios")
-                || path.startsWith("/tipos-servicio")
-                || path.startsWith("/feriados")) {
+                || path.startsWith("/tipos-servicio")) {
             return Permiso.GESTIONAR_SERVICIOS;
         }
         if (path.startsWith("/api/legajos/archivos/") && "DELETE".equalsIgnoreCase(metodo)) {

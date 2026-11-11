@@ -42,7 +42,11 @@
                 <div class="permissions-grid">
                     <label class="permission-item" th:each="permiso : ${permisosDisponibles}">
                         <input type="checkbox" name="permisos" th:value="${permiso.name()}">
-                        <span th:text="${permiso.etiqueta}"></span>
+                        <span>
+                            <strong style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--green-dark);margin-bottom:2px;"
+                                    th:text="${permiso.categoria}"></strong>
+                            <span th:text="${permiso.etiqueta}"></span>
+                        </span>
                     </label>
                 </div>
             </div>
@@ -95,7 +99,11 @@
                         <label class="permission-item" th:each="permiso : ${permisosDisponibles}">
                             <input type="checkbox" name="permisos" th:value="${permiso.name()}"
                                    th:checked="${rol.permisos.contains(permiso)}">
-                            <span th:text="${permiso.etiqueta}"></span>
+                            <span>
+                                <strong style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--green-dark);margin-bottom:2px;"
+                                        th:text="${permiso.categoria}"></strong>
+                                <span th:text="${permiso.etiqueta}"></span>
+                            </span>
                         </label>
                     </div>
                 </div>

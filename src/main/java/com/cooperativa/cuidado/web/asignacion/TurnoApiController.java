@@ -4,6 +4,7 @@ import com.cooperativa.cuidado.asistencia.Asistencia;
 import com.cooperativa.cuidado.asistencia.service.AsistenciaService;
 import com.cooperativa.cuidado.cliente.Cliente;
 import com.cooperativa.cuidado.cliente.ClienteRepository;
+import com.cooperativa.cuidado.cuenta.Permiso;
 import com.cooperativa.cuidado.cuenta.UsuarioCuenta;
 import com.cooperativa.cuidado.exception.AccesoDenegadoException;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
@@ -176,11 +177,13 @@ public class TurnoApiController {
             return error(HttpStatus.UNAUTHORIZED, "Tu sesión expiró. Iniciá sesión nuevamente.");
         }
         try {
-            boolean esAdmin = usuarioOpt.map(UsuarioCuenta::esAdmin).orElse(!seguridadActiva);
+            boolean puedeGestionarMarcaciones = usuarioOpt
+                    .map(u -> u.esAdmin() || u.tienePermiso(Permiso.GESTIONAR_MARCACIONES_TURNOS))
+                    .orElse(!seguridadActiva);
             String accion = solicitud != null ? solicitud.accion() : null;
             String aclaracion = solicitud != null ? solicitud.aclaracionTurno() : null;
             Asistencia actualizada;
-            if (esAdmin) {
+            if (puedeGestionarMarcaciones) {
                 actualizada = asistenciaService.registrarMarcacionAdmin(
                         id,
                         accion,

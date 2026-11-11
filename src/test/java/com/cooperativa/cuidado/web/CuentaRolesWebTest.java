@@ -114,17 +114,25 @@ class CuentaRolesWebTest {
                 .andExpect(content().string(Matchers.containsString("ayudante")))
                 .andExpect(content().string(Matchers.containsString("socio")));
 
+        mockMvc.perform(get("/cuentas/roles").session(sesionAdmin))
+                .andExpect(status().isOk())
+                .andExpect(view().name("roles"))
+                .andExpect(content().string(Matchers.containsString("GESTIONAR_RETENCIONES")))
+                .andExpect(content().string(Matchers.containsString("REALIZAR_LIQUIDACIONES_FAMILIA")))
+                .andExpect(content().string(Matchers.containsString("GESTIONAR_FERIADOS")))
+                .andExpect(content().string(Matchers.containsString("GESTIONAR_MARCACIONES_TURNOS")));
+
         // Crear un nuevo rol personalizado con casillas de funciones
         mockMvc.perform(post("/cuentas/roles")
                         .session(sesionAdmin)
                         .param("nombre", "AUDITOR")
                         .param("soloTurnosPropios", "false")
-                        .param("permisos", "VER_ESTADISTICAS", "EXPORTAR_HISTORICOS"))
+                        .param("permisos", "VER_ESTADISTICAS", "EXPORTAR_HISTORICOS", "GESTIONAR_RETENCIONES", "REALIZAR_LIQUIDACIONES_FAMILIA", "GESTIONAR_FERIADOS"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/cuentas/roles"));
 
         RolUsuario rolAuditor = rolRepository.findByNombreIgnoreCase("AUDITOR").orElseThrow();
-        assertEquals(2, rolAuditor.getPermisos().size());
+        assertEquals(5, rolAuditor.getPermisos().size());
 
         // Crear una cuenta asignada al nuevo rol con nombre, apellido y DNI
         mockMvc.perform(post("/cuentas")
@@ -157,10 +165,16 @@ class CuentaRolesWebTest {
         mockMvc.perform(get("/presupuestos").session(sesionAyudante))
                 .andExpect(status().isOk());
 
-        // No puede acceder a estadísticas, liquidaciones ni cuentas
+        // No puede acceder a estadísticas, liquidaciones, retenciones, liquidación familia, feriados ni cuentas
         mockMvc.perform(get("/estadisticas").session(sesionAyudante))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/liquidaciones").session(sesionAyudante))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/retenciones").session(sesionAyudante))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/liquidaciones-familia").session(sesionAyudante))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/feriados").session(sesionAyudante))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/cuentas").session(sesionAyudante))
                 .andExpect(status().isForbidden());

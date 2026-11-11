@@ -16,7 +16,7 @@
             <p class="muted">Definí para cada servicio los valores por hora de cliente y socio según tramo horario (menos de 12 hs o 12 hs o más) y tipo de día (semana, fin de semana o feriado nacional).</p>
         </div>
         <div class="quick-links">
-            <a class="button button-secondary" th:href="@{/feriados}">Feriados nacionales</a>
+            <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_FERIADOS')}" class="button button-secondary" th:href="@{/feriados}">Feriados nacionales</a>
             <a class="button button-secondary" th:href="@{/tipos-servicio}">Tipos de servicio</a>
             <a class="button button-primary" th:href="@{/servicios/nuevo}">Nuevo servicio</a>
         </div>

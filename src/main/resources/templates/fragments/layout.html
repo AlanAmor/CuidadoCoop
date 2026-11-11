@@ -8,30 +8,31 @@
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'ASIGNAR_TURNOS')}" th:href="@{/asignaciones/nueva}">Asignar turno</a>
 
         <div class="nav-dropdown"
-             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}">
+             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES') or @seguridad.tienePermiso(usuarioActual, 'GESTIONAR_RETENCIONES')}">
             <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
                 Socios <span class="nav-dropdown-caret" aria-hidden="true">▾</span>
             </button>
             <div class="nav-dropdown-menu" role="menu">
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_SOCIOS')}" th:href="@{/socios}">Socios</a>
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones}">Liquidaciones</a>
-                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/retenciones}">Retenciones</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_RETENCIONES')}" th:href="@{/retenciones}">Retenciones</a>
             </div>
         </div>
 
         <div class="nav-dropdown"
-             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}">
+             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES_FAMILIA') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}">
             <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
                 Clientes <span class="nav-dropdown-caret" aria-hidden="true">▾</span>
             </button>
             <div class="nav-dropdown-menu" role="menu">
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}" th:href="@{/clientes}">Clientes</a>
-                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES')}" th:href="@{/liquidaciones-familia}">Liquidación Familia</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES_FAMILIA')}" th:href="@{/liquidaciones-familia}">Liquidación Familia</a>
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}" th:href="@{/presupuestos}">Presupuestos</a>
             </div>
         </div>
 
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_SERVICIOS')}" th:href="@{/servicios}">Servicios</a>
+        <a th:if="${!@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_SERVICIOS') and @seguridad.tienePermiso(usuarioActual, 'GESTIONAR_FERIADOS')}" th:href="@{/feriados}">Feriados</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}" th:href="@{/asistencias/historico}">Histórico</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'VER_ESTADISTICAS')}" th:href="@{/estadisticas}">Estadísticas</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_CUENTAS')}" th:href="@{/cuentas}">Cuentas</a>

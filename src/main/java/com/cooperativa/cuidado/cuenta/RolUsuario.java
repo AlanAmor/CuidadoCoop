@@ -40,7 +40,7 @@ public class RolUsuario {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "rol_permisos", joinColumns = @JoinColumn(name = "rol_id"))
     @Enumerated(EnumType.STRING)
-    @Column(name = "permiso", nullable = false, length = 50)
+    @Column(name = "permiso", nullable = false, length = 60, columnDefinition = "varchar(60)")
     private Set<Permiso> permisos = EnumSet.noneOf(Permiso.class);
 
     public RolUsuario() {

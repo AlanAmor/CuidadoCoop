@@ -9,6 +9,7 @@ import com.cooperativa.cuidado.socio.Especialidad;
 import com.cooperativa.cuidado.socio.EstadoSocio;
 import com.cooperativa.cuidado.socio.Socio;
 import com.cooperativa.cuidado.socio.SocioRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.EnumSet;
 import java.util.Set;
 
-/** Crea los roles base (ADMIN, AYUDANTE, SOCIO) y las cuentas de ejemplo para prueba. */
+/** Crea los roles base (ADMIN, AYUDANTE, SOCIO) y las cuentas iniciales. */
 @Component
 public class CuentasIniciales implements ApplicationRunner {
 
@@ -27,18 +28,33 @@ public class CuentasIniciales implements ApplicationRunner {
     private final SocioRepository socioRepository;
     private final PasswordHasher passwordHasher;
     private final JdbcTemplate jdbcTemplate;
+    private final boolean crearCuentasDemo;
+    private final String adminUsername;
+    private final String adminPassword;
+    private final String adminNombre;
+    private final String adminApellido;
 
     public CuentasIniciales(
             RolUsuarioRepository rolRepository,
             UsuarioCuentaRepository usuarioRepository,
             SocioRepository socioRepository,
             PasswordHasher passwordHasher,
-            JdbcTemplate jdbcTemplate) {
+            JdbcTemplate jdbcTemplate,
+            @Value("${app.cuentas.demo:true}") boolean crearCuentasDemo,
+            @Value("${app.cuentas.admin.username:admin}") String adminUsername,
+            @Value("${app.cuentas.admin.password:admin123}") String adminPassword,
+            @Value("${app.cuentas.admin.nombre:Laura}") String adminNombre,
+            @Value("${app.cuentas.admin.apellido:Administradora}") String adminApellido) {
         this.rolRepository = rolRepository;
         this.usuarioRepository = usuarioRepository;
         this.socioRepository = socioRepository;
         this.passwordHasher = passwordHasher;
         this.jdbcTemplate = jdbcTemplate;
+        this.crearCuentasDemo = crearCuentasDemo;
+        this.adminUsername = adminUsername;
+        this.adminPassword = adminPassword;
+        this.adminNombre = adminNombre;
+        this.adminApellido = adminApellido;
     }
 
     @Override
@@ -80,7 +96,12 @@ public class CuentasIniciales implements ApplicationRunner {
                 true,
                 EnumSet.noneOf(Permiso.class));
 
-        asegurarUsuario("admin", "admin123", "Laura", "Administradora", "10000001", rolAdmin);
+        asegurarUsuario(adminUsername, adminPassword, adminNombre, adminApellido, "10000001", rolAdmin);
+
+        if (!crearCuentasDemo) {
+            return;
+        }
+
         asegurarUsuario("ayudante", "ayudante123", "Martín", "Ayudante", "10000002", rolAyudante);
 
         // Socio de ejemplo vinculado por DNI (usa 20900001 que coincide con Ana Gómez de los datos demo, o la crea si no existe)

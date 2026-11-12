@@ -120,7 +120,24 @@ class CuentaRolesWebTest {
                 .andExpect(content().string(Matchers.containsString("GESTIONAR_RETENCIONES")))
                 .andExpect(content().string(Matchers.containsString("REALIZAR_LIQUIDACIONES_FAMILIA")))
                 .andExpect(content().string(Matchers.containsString("GESTIONAR_FERIADOS")))
-                .andExpect(content().string(Matchers.containsString("GESTIONAR_MARCACIONES_TURNOS")));
+                .andExpect(content().string(Matchers.containsString("GESTIONAR_MARCACIONES_TURNOS")))
+                .andExpect(content().string(Matchers.containsString("CONFIGURAR_CORREO")));
+
+        // Configurar cuenta de correo desde /configuracion/correo
+        mockMvc.perform(get("/configuracion/correo").session(sesionAdmin))
+                .andExpect(status().isOk())
+                .andExpect(view().name("configuracion-correo"));
+
+        mockMvc.perform(post("/configuracion/correo")
+                        .session(sesionAdmin)
+                        .param("host", "smtp.gmail.com")
+                        .param("puerto", "587")
+                        .param("username", "grupoazul.ucd@gmail.com")
+                        .param("password", "abcd efgh ijkl mnop")
+                        .param("remitenteNombre", "Cooperativa Grupo Azul")
+                        .param("usarTls", "true"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/configuracion/correo"));
 
         // Crear un nuevo rol personalizado con casillas de funciones
         mockMvc.perform(post("/cuentas/roles")

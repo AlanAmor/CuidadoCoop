@@ -132,15 +132,19 @@
         <div>
             <p class="eyebrow">MÓDULO FINANCIERO · UNIDAD DE CUIDADO DOMICILIARIO</p>
             <h1>Liquidación Familia</h1>
-            <p class="muted">Generá la liquidación mensual del servicio para la familia del paciente con el formato oficial en Excel y PDF.</p>
+            <p class="muted">Generá la liquidación mensual del servicio para la familia del paciente con el formato oficial y descargala o enviala por mail en Excel y PDF.</p>
         </div>
-        <a class="button button-secondary" th:href="@{/clientes}">Ver Pacientes / Clientes</a>
+        <div class="quick-links">
+            <a th:if="${@seguridad.tienePermiso(usuarioActual, 'CONFIGURAR_CORREO')}"
+               class="button button-quiet" th:href="@{/configuracion/correo}">Configurar Correo</a>
+            <a class="button button-secondary" th:href="@{/clientes}">Ver Pacientes / Clientes</a>
+        </div>
     </section>
 
     <div class="alert alert-success" th:if="${mensajeExito}" role="status">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
             <span th:text="${mensajeExito}">Liquidación emitida</span>
-            <span th:if="${recienEmitida != null}" style="display:flex; gap:8px;">
+            <span th:if="${recienEmitida != null}" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <a class="button button-primary button-sm"
                    th:href="@{/liquidaciones-familia/{id}/pdf(id=${recienEmitida.id})}">
                     Descargar PDF
@@ -149,6 +153,20 @@
                    th:href="@{/liquidaciones-familia/{id}/excel(id=${recienEmitida.id})}">
                     Descargar Excel (.xlsx)
                 </a>
+                <form method="post"
+                      th:action="@{/liquidaciones-familia/{id}/enviar-mail(id=${recienEmitida.id})}"
+                      style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0;">
+                    <input type="email" name="correoDestino" required
+                           th:value="${recienEmitida.cliente != null ? recienEmitida.cliente.correo : ''}"
+                           placeholder="correo@familia.com"
+                           style="padding:5px 8px; font-size:0.84rem; min-width:190px; border:1px solid #cbd5e1; border-radius:6px;">
+                    <select name="formatoAdjunto" style="padding:5px 8px; font-size:0.84rem; border:1px solid #cbd5e1; border-radius:6px;">
+                        <option value="PDF">PDF</option>
+                        <option value="EXCEL">Excel</option>
+                        <option value="AMBOS">PDF + Excel</option>
+                    </select>
+                    <button type="submit" class="button button-secondary button-sm">✉ Enviar por mail</button>
+                </form>
             </span>
         </div>
     </div>
@@ -172,6 +190,7 @@
                     <option value="">Seleccioná un paciente</option>
                     <option th:each="c : ${clientes}"
                             th:value="${c.id}"
+                            th:attr="data-correo=${c.correo}"
                             th:text="|${c.nombrePaciente}${c.dniPaciente != null and !#strings.isEmpty(c.dniPaciente) ? ' · DNI ' + c.dniPaciente : ''} · ${c.domicilio}|"></option>
                 </select>
             </div>
@@ -338,6 +357,30 @@
             </div>
         </div>
 
+        <fieldset class="repeat-box" style="margin-top: 16px;">
+            <legend>Envío por correo electrónico (opcional)</legend>
+            <label class="check-inline">
+                <input type="checkbox" id="chk-enviar-mail-familia" name="enviarPorMail" value="true">
+                <strong>Enviar también por correo electrónico al generar la liquidación</strong>
+                <span class="muted" th:if="${!correoConfigurado}">(recordá configurar primero la cuenta emisora en "Configurar Correo")</span>
+            </label>
+            <div class="form-grid" id="box-enviar-mail-familia" style="margin-top:10px;" hidden>
+                <div class="field" style="grid-column: span 2;">
+                    <label for="lf-correoEnvio">Correo electrónico de la familia / cliente</label>
+                    <input id="lf-correoEnvio" name="correoEnvio" type="email"
+                           placeholder="correo@familia.com (se autocompleta si el cliente lo tiene cargado)">
+                </div>
+                <div class="field">
+                    <label for="lf-formatoEnvio">Formato adjunto</label>
+                    <select id="lf-formatoEnvio" name="formatoEnvio">
+                        <option value="PDF">Adjuntar PDF</option>
+                        <option value="EXCEL">Adjuntar Excel (.xlsx)</option>
+                        <option value="AMBOS">Adjuntar ambos (PDF + Excel)</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
         <div class="form-actions" style="margin-top:18px;">
             <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(clientes)}">
                 Generar Liquidación Familia
@@ -362,7 +405,7 @@
                     <th>IVA</th>
                     <th>Impuestos</th>
                     <th>Saldo a Transferir</th>
-                    <th>Descargar</th>
+                    <th>Descargar / Enviar por Mail</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -374,11 +417,32 @@
                     <td th:text="|$ ${#numbers.formatDecimal(l.importeIva, 1, 2)} (${#numbers.formatDecimal(l.porcentajeIva, 1, 2)}%)|">$ 0,00</td>
                     <td th:text="|$ ${#numbers.formatDecimal(l.importeImpuestos, 1, 2)}|">$ 0,00</td>
                     <td><strong th:text="|$ ${#numbers.formatDecimal(l.saldoATransferir, 1, 2)}|">$ 0,00</strong></td>
-                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <a class="button button-primary button-sm"
-                           th:href="@{/liquidaciones-familia/{id}/pdf(id=${l.id})}">PDF</a>
-                        <a class="button button-secondary button-sm"
-                           th:href="@{/liquidaciones-familia/{id}/excel(id=${l.id})}">Excel</a>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                            <a class="button button-primary button-sm"
+                               th:href="@{/liquidaciones-familia/{id}/pdf(id=${l.id})}">PDF</a>
+                            <a class="button button-secondary button-sm"
+                               th:href="@{/liquidaciones-familia/{id}/excel(id=${l.id})}">Excel</a>
+                            <details style="display:inline-block;">
+                                <summary class="button button-quiet button-sm" style="list-style:none; cursor:pointer;">
+                                    ✉ Enviar mail
+                                </summary>
+                                <form method="post"
+                                      th:action="@{/liquidaciones-familia/{id}/enviar-mail(id=${l.id})}"
+                                      style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+                                    <input type="email" name="correoDestino" required
+                                           th:value="${l.cliente != null ? l.cliente.correo : ''}"
+                                           placeholder="correo@familia.com"
+                                           style="padding:5px 8px; font-size:0.82rem; min-width:180px;">
+                                    <select name="formatoAdjunto" style="padding:5px 8px; font-size:0.82rem;">
+                                        <option value="PDF">PDF</option>
+                                        <option value="EXCEL">Excel</option>
+                                        <option value="AMBOS">PDF + Excel</option>
+                                    </select>
+                                    <button type="submit" class="button button-primary button-sm">Enviar</button>
+                                </form>
+                            </details>
+                        </div>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(liquidacionesEmitidas)}">
@@ -407,6 +471,15 @@
     const ivaSelect = document.getElementById("lf-iva-select");
     const ivaInp = document.getElementById("lf-porcentajeIva");
     const impInp = document.getElementById("lf-importeImpuestos");
+    const chkMailFam = document.getElementById("chk-enviar-mail-familia");
+    const boxMailFam = document.getElementById("box-enviar-mail-familia");
+    const inpCorreoFam = document.getElementById("lf-correoEnvio");
+
+    if (chkMailFam && boxMailFam) {
+        chkMailFam.addEventListener("change", () => {
+            boxMailFam.hidden = !chkMailFam.checked;
+        });
+    }
 
     function fmtMoney(v) {
         return "$ " + Number(v || 0).toLocaleString("es-AR", {
@@ -569,7 +642,13 @@
             });
     }
 
-    clienteSel.addEventListener("change", () => cargarDatosPacienteYPeriodo(true));
+    clienteSel.addEventListener("change", () => {
+        if (inpCorreoFam) {
+            const opt = clienteSel.options[clienteSel.selectedIndex];
+            inpCorreoFam.value = (opt && opt.dataset.correo) ? opt.dataset.correo : "";
+        }
+        cargarDatosPacienteYPeriodo(true);
+    });
     mesSel.addEventListener("change", () => cargarDatosPacienteYPeriodo(false));
     anioSel.addEventListener("change", () => cargarDatosPacienteYPeriodo(false));
 

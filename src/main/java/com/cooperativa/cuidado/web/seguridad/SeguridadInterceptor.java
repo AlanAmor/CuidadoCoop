@@ -117,6 +117,9 @@ public class SeguridadInterceptor implements HandlerInterceptor {
         if (path.startsWith("/cuentas")) {
             return Permiso.GESTIONAR_CUENTAS;
         }
+        if (path.startsWith("/configuracion/correo")) {
+            return Permiso.CONFIGURAR_CORREO;
+        }
         if (path.startsWith("/estadisticas")) {
             return Permiso.VER_ESTADISTICAS;
         }

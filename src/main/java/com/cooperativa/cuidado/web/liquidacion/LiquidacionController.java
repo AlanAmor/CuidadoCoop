@@ -1,7 +1,9 @@
 package com.cooperativa.cuidado.web.liquidacion;
 
+import com.cooperativa.cuidado.correo.service.CorreoService;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
+import com.cooperativa.cuidado.exception.ReglaNegocioException;
 import com.cooperativa.cuidado.liquidacion.dto.LiquidacionMensualSocio;
 import com.cooperativa.cuidado.liquidacion.service.LiquidacionService;
 import com.cooperativa.cuidado.recibo.ReciboRetribucion;
@@ -44,16 +46,19 @@ public class LiquidacionController {
     private final SocioRepository socioRepository;
     private final ReciboRetribucionService reciboService;
     private final ReciboExportService reciboExportService;
+    private final CorreoService correoService;
 
     public LiquidacionController(
             LiquidacionService liquidacionService,
             SocioRepository socioRepository,
             ReciboRetribucionService reciboService,
-            ReciboExportService reciboExportService) {
+            ReciboExportService reciboExportService,
+            CorreoService correoService) {
         this.liquidacionService = liquidacionService;
         this.socioRepository = socioRepository;
         this.reciboService = reciboService;
         this.reciboExportService = reciboExportService;
+        this.correoService = correoService;
     }
 
     @GetMapping("/liquidaciones")
@@ -112,19 +117,49 @@ public class LiquidacionController {
     @PostMapping("/liquidaciones/recibos")
     public String emitirRecibo(
             @ModelAttribute EmisionReciboForm form,
+            @RequestParam(defaultValue = "false") boolean enviarPorMail,
+            @RequestParam(required = false) String correoEnvio,
+            @RequestParam(defaultValue = "PDF") String formatoEnvio,
             RedirectAttributes redirectAttributes,
             Model model) {
         try {
             ReciboRetribucion emitido = reciboService.emitirRecibo(form);
-            redirectAttributes.addFlashAttribute("mensajeExito",
-                    "Se emitió el Recibo de Retribución " + emitido.getNumeroFormateado()
-                            + " para " + emitido.getNombreApellidoSocio() + ".");
+            String msg = "Se emitió el Recibo de Retribución " + emitido.getNumeroFormateado()
+                    + " para " + emitido.getNombreApellidoSocio() + ".";
+            if (enviarPorMail) {
+                try {
+                    String destino = correoService.enviarReciboSocio(emitido, correoEnvio, formatoEnvio);
+                    msg += " También fue enviado por correo a " + destino + ".";
+                } catch (DatosInvalidosException | ReglaNegocioException mailEx) {
+                    redirectAttributes.addFlashAttribute("errorConsulta", mailEx.getMessage());
+                }
+            }
+            redirectAttributes.addFlashAttribute("mensajeExito", msg);
             return "redirect:/liquidaciones?reciboEmitidoId=" + emitido.getId();
         } catch (DatosInvalidosException | RecursoNoEncontradoException ex) {
             model.addAttribute("errorConsulta", ex.getMessage());
             cargarModeloBase(model, YearMonth.now());
             return "liquidaciones";
         }
+    }
+
+    @PostMapping("/liquidaciones/recibos/{id}/enviar-mail")
+    public String enviarReciboPorMail(
+            @PathVariable Long id,
+            @RequestParam(required = false) String correoDestino,
+            @RequestParam(defaultValue = "PDF") String formatoAdjunto,
+            RedirectAttributes redirectAttributes) {
+        try {
+            ReciboRetribucion recibo = reciboService.obtener(id);
+            String destino = correoService.enviarReciboSocio(recibo, correoDestino, formatoAdjunto);
+            redirectAttributes.addFlashAttribute(
+                    "mensajeExito",
+                    "El Recibo de Retribución " + recibo.getNumeroFormateado()
+                            + " se envió por correo a " + destino + ".");
+        } catch (DatosInvalidosException | RecursoNoEncontradoException | ReglaNegocioException ex) {
+            redirectAttributes.addFlashAttribute("errorConsulta", ex.getMessage());
+        }
+        return "redirect:/liquidaciones?reciboEmitidoId=" + id;
     }
 
     @GetMapping("/liquidaciones/recibos/{id}/pdf")
@@ -150,6 +185,7 @@ public class LiquidacionController {
         long proximo = reciboService.obtenerProximoNumero();
         model.addAttribute("proximoNumeroFormateado", String.format("N° %05d", proximo));
         model.addAttribute("recibosEmitidos", reciboService.listarEmitidos());
+        model.addAttribute("correoConfigurado", correoService.estaConfigurado());
     }
 
     private static ResponseEntity<byte[]> descarga(byte[] archivo, MediaType tipo, String nombre) {

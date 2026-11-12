@@ -151,15 +151,19 @@
         <div>
             <p class="eyebrow">MÓDULO FINANCIERO · RETORNOS MENSUALES</p>
             <h1>Recibo de Retribución / Anticipo de Retornos / Retenciones</h1>
-            <p class="muted">Emití recibos numerados con el formato oficial de Cooperativa de Trabajo Grupo Azul Limitada y descargalos en PDF o Excel.</p>
+            <p class="muted">Emití recibos numerados con el formato oficial de Cooperativa de Trabajo Grupo Azul Limitada y descargalos o envialos por mail en PDF o Excel.</p>
         </div>
-        <a class="button button-secondary" th:href="@{/retenciones}">Gestionar Retenciones</a>
+        <div class="quick-links">
+            <a th:if="${@seguridad.tienePermiso(usuarioActual, 'CONFIGURAR_CORREO')}"
+               class="button button-quiet" th:href="@{/configuracion/correo}">Configurar Correo</a>
+            <a class="button button-secondary" th:href="@{/retenciones}">Gestionar Retenciones</a>
+        </div>
     </section>
 
     <div class="alert alert-success" th:if="${mensajeExito}" role="status">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
             <span th:text="${mensajeExito}">Recibo emitido</span>
-            <span th:if="${reciboRecienEmitido != null}" style="display:flex; gap:8px;">
+            <span th:if="${reciboRecienEmitido != null}" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
                 <a class="button button-primary button-sm"
                    th:href="@{/liquidaciones/recibos/{id}/pdf(id=${reciboRecienEmitido.id})}">
                     Descargar PDF (<span th:text="${reciboRecienEmitido.numeroFormateado}"></span>)
@@ -168,6 +172,20 @@
                    th:href="@{/liquidaciones/recibos/{id}/excel(id=${reciboRecienEmitido.id})}">
                     Descargar Excel (.xlsx)
                 </a>
+                <form method="post"
+                      th:action="@{/liquidaciones/recibos/{id}/enviar-mail(id=${reciboRecienEmitido.id})}"
+                      style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0;">
+                    <input type="email" name="correoDestino" required
+                           th:value="${reciboRecienEmitido.socio != null ? reciboRecienEmitido.socio.correo : ''}"
+                           placeholder="correo@socio.com"
+                           style="padding:5px 8px; font-size:0.84rem; min-width:190px; border:1px solid #cbd5e1; border-radius:6px;">
+                    <select name="formatoAdjunto" style="padding:5px 8px; font-size:0.84rem; border:1px solid #cbd5e1; border-radius:6px;">
+                        <option value="PDF">PDF</option>
+                        <option value="EXCEL">Excel</option>
+                        <option value="AMBOS">PDF + Excel</option>
+                    </select>
+                    <button type="submit" class="button button-secondary button-sm">✉ Enviar por mail</button>
+                </form>
             </span>
         </div>
     </div>
@@ -197,6 +215,7 @@
                     <option value="">Seleccioná un socio</option>
                     <option th:each="socio : ${socios}"
                             th:value="${socio.id}"
+                            th:attr="data-correo=${socio.correo}"
                             th:text="|${socio.apellido}, ${socio.nombre} · DNI ${socio.dni}|"></option>
                 </select>
             </div>
@@ -422,6 +441,29 @@
             </div>
         </div>
 
+        <div class="optional-block" style="margin-top: 16px;">
+            <label class="check-inline">
+                <input type="checkbox" id="chk-enviar-mail-recibo" name="enviarPorMail" value="true">
+                <strong>Enviar también por correo electrónico al emitir el recibo</strong>
+                <span class="muted" th:if="${!correoConfigurado}">(recordá configurar primero la cuenta emisora en "Configurar Correo")</span>
+            </label>
+            <div class="form-grid" id="box-enviar-mail-recibo" style="margin-top:10px;" hidden>
+                <div class="field" style="grid-column: span 2;">
+                    <label for="recibo-correoEnvio">Correo electrónico del socio</label>
+                    <input id="recibo-correoEnvio" name="correoEnvio" type="email"
+                           placeholder="correo@socio.com (se autocompleta si el socio lo tiene cargado)">
+                </div>
+                <div class="field">
+                    <label for="recibo-formatoEnvio">Formato adjunto</label>
+                    <select id="recibo-formatoEnvio" name="formatoEnvio">
+                        <option value="PDF">Adjuntar PDF</option>
+                        <option value="EXCEL">Adjuntar Excel (.xlsx)</option>
+                        <option value="AMBOS">Adjuntar ambos (PDF + Excel)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div class="form-actions" style="margin-top:18px;">
             <button class="button button-primary" type="submit" th:disabled="${#lists.isEmpty(socios)}">
                 Emitir Recibo de Retribución
@@ -446,7 +488,7 @@
                     <th>Total Retribución</th>
                     <th>Retenciones</th>
                     <th>Retribución Neta</th>
-                    <th>Descargar</th>
+                    <th>Descargar / Enviar por Mail</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -458,11 +500,32 @@
                     <td th:text="|$ ${#numbers.formatDecimal(r.totalRetribucion, 1, 2)}|">$ 0,00</td>
                     <td th:text="|$ ${#numbers.formatDecimal(r.totalRetenciones, 1, 2)}|">$ 0,00</td>
                     <td><strong th:text="|$ ${#numbers.formatDecimal(r.retribucionNeta, 1, 2)}|">$ 0,00</strong></td>
-                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <a class="button button-primary button-sm"
-                           th:href="@{/liquidaciones/recibos/{id}/pdf(id=${r.id})}">PDF</a>
-                        <a class="button button-secondary button-sm"
-                           th:href="@{/liquidaciones/recibos/{id}/excel(id=${r.id})}">Excel</a>
+                    <td>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                            <a class="button button-primary button-sm"
+                               th:href="@{/liquidaciones/recibos/{id}/pdf(id=${r.id})}">PDF</a>
+                            <a class="button button-secondary button-sm"
+                               th:href="@{/liquidaciones/recibos/{id}/excel(id=${r.id})}">Excel</a>
+                            <details style="display:inline-block;">
+                                <summary class="button button-quiet button-sm" style="list-style:none; cursor:pointer;">
+                                    ✉ Enviar mail
+                                </summary>
+                                <form method="post"
+                                      th:action="@{/liquidaciones/recibos/{id}/enviar-mail(id=${r.id})}"
+                                      style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px; padding:8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+                                    <input type="email" name="correoDestino" required
+                                           th:value="${r.socio != null ? r.socio.correo : ''}"
+                                           placeholder="correo@socio.com"
+                                           style="padding:5px 8px; font-size:0.82rem; min-width:180px;">
+                                    <select name="formatoAdjunto" style="padding:5px 8px; font-size:0.82rem;">
+                                        <option value="PDF">PDF</option>
+                                        <option value="EXCEL">Excel</option>
+                                        <option value="AMBOS">PDF + Excel</option>
+                                    </select>
+                                    <button type="submit" class="button button-primary button-sm">Enviar</button>
+                                </form>
+                            </details>
+                        </div>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(recibosEmitidos)}">
@@ -572,6 +635,15 @@
     const btnAddOtraRet = document.getElementById("btn-agregar-otra-ret");
     const listaOtrasRet = document.getElementById("lista-otras-ret");
     const avisoRet = document.getElementById("retenciones-aviso");
+    const chkMailRecibo = document.getElementById("chk-enviar-mail-recibo");
+    const boxMailRecibo = document.getElementById("box-enviar-mail-recibo");
+    const inpCorreoRecibo = document.getElementById("recibo-correoEnvio");
+
+    if (chkMailRecibo && boxMailRecibo) {
+        chkMailRecibo.addEventListener("change", () => {
+            boxMailRecibo.hidden = !chkMailRecibo.checked;
+        });
+    }
 
     let subtotalCuidadosActual = 0;
 
@@ -727,7 +799,13 @@
         }
     });
 
-    socioSel.addEventListener("change", () => cargarPrevisualizacion(true));
+    socioSel.addEventListener("change", () => {
+        if (inpCorreoRecibo) {
+            const opt = socioSel.options[socioSel.selectedIndex];
+            inpCorreoRecibo.value = (opt && opt.dataset.correo) ? opt.dataset.correo : "";
+        }
+        cargarPrevisualizacion(true);
+    });
     desdeInp.addEventListener("change", () => cargarPrevisualizacion(false));
     hastaInp.addEventListener("change", () => cargarPrevisualizacion(false));
 

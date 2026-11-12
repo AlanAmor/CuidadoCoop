@@ -58,6 +58,9 @@ public enum Permiso {
     VER_ESTADISTICAS(
             "Histórico, estadísticas y cuentas",
             "Acceder al panel de estadísticas operativas"),
+    CONFIGURAR_CORREO(
+            "Histórico, estadísticas y cuentas",
+            "Configurar cuenta de correo electrónico para envío de liquidaciones"),
     GESTIONAR_CUENTAS(
             "Histórico, estadísticas y cuentas",
             "Gestionar cuentas de usuarios y configurar roles y permisos");

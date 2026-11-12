@@ -35,6 +35,7 @@
         <a th:if="${!@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_SERVICIOS') and @seguridad.tienePermiso(usuarioActual, 'GESTIONAR_FERIADOS')}" th:href="@{/feriados}">Feriados</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'EXPORTAR_HISTORICOS')}" th:href="@{/asistencias/historico}">Histórico</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'VER_ESTADISTICAS')}" th:href="@{/estadisticas}">Estadísticas</a>
+        <a th:if="${@seguridad.tienePermiso(usuarioActual, 'CONFIGURAR_CORREO')}" th:href="@{/configuracion/correo}">Correo</a>
         <a th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_CUENTAS')}" th:href="@{/cuentas}">Cuentas</a>
     </nav>
     <div class="header-session" th:if="${usuarioActual != null}">

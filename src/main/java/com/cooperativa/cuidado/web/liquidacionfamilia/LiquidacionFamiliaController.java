@@ -1,8 +1,10 @@
 package com.cooperativa.cuidado.web.liquidacionfamilia;
 
 import com.cooperativa.cuidado.cliente.ClienteRepository;
+import com.cooperativa.cuidado.correo.service.CorreoService;
 import com.cooperativa.cuidado.exception.DatosInvalidosException;
 import com.cooperativa.cuidado.exception.RecursoNoEncontradoException;
+import com.cooperativa.cuidado.exception.ReglaNegocioException;
 import com.cooperativa.cuidado.liquidacionfamilia.LiquidacionFamilia;
 import com.cooperativa.cuidado.liquidacionfamilia.dto.EmisionLiquidacionFamiliaForm;
 import com.cooperativa.cuidado.liquidacionfamilia.dto.PrevisualizacionFamiliaDto;
@@ -48,14 +50,17 @@ public class LiquidacionFamiliaController {
     private final LiquidacionFamiliaService liquidacionService;
     private final LiquidacionFamiliaExportService exportService;
     private final ClienteRepository clienteRepository;
+    private final CorreoService correoService;
 
     public LiquidacionFamiliaController(
             LiquidacionFamiliaService liquidacionService,
             LiquidacionFamiliaExportService exportService,
-            ClienteRepository clienteRepository) {
+            ClienteRepository clienteRepository,
+            CorreoService correoService) {
         this.liquidacionService = liquidacionService;
         this.exportService = exportService;
         this.clienteRepository = clienteRepository;
+        this.correoService = correoService;
     }
 
     @GetMapping("/liquidaciones-familia")
@@ -92,19 +97,49 @@ public class LiquidacionFamiliaController {
     @PostMapping("/liquidaciones-familia")
     public String emitir(
             @ModelAttribute EmisionLiquidacionFamiliaForm form,
+            @RequestParam(defaultValue = "false") boolean enviarPorMail,
+            @RequestParam(required = false) String correoEnvio,
+            @RequestParam(defaultValue = "PDF") String formatoEnvio,
             RedirectAttributes redirectAttributes,
             Model model) {
         try {
             LiquidacionFamilia emitida = liquidacionService.emitir(form);
-            redirectAttributes.addFlashAttribute("mensajeExito",
-                    "Se generó la Liquidación Familia de " + emitida.getNombrePaciente()
-                            + " (" + emitida.getPeriodoEtiqueta() + ").");
+            String msg = "Se generó la Liquidación Familia de " + emitida.getNombrePaciente()
+                    + " (" + emitida.getPeriodoEtiqueta() + ").";
+            if (enviarPorMail) {
+                try {
+                    String destino = correoService.enviarLiquidacionFamilia(emitida, correoEnvio, formatoEnvio);
+                    msg += " También fue enviada por correo a " + destino + ".";
+                } catch (DatosInvalidosException | ReglaNegocioException mailEx) {
+                    redirectAttributes.addFlashAttribute("errorOperacion", mailEx.getMessage());
+                }
+            }
+            redirectAttributes.addFlashAttribute("mensajeExito", msg);
             return "redirect:/liquidaciones-familia?emitidaId=" + emitida.getId();
         } catch (DatosInvalidosException | RecursoNoEncontradoException ex) {
             model.addAttribute("errorOperacion", ex.getMessage());
             cargarModeloBase(model);
             return "liquidaciones-familia";
         }
+    }
+
+    @PostMapping("/liquidaciones-familia/{id}/enviar-mail")
+    public String enviarPorMail(
+            @PathVariable Long id,
+            @RequestParam(required = false) String correoDestino,
+            @RequestParam(defaultValue = "PDF") String formatoAdjunto,
+            RedirectAttributes redirectAttributes) {
+        try {
+            LiquidacionFamilia liq = liquidacionService.obtener(id);
+            String destino = correoService.enviarLiquidacionFamilia(liq, correoDestino, formatoAdjunto);
+            redirectAttributes.addFlashAttribute(
+                    "mensajeExito",
+                    "La Liquidación Familia de " + liq.getNombrePaciente()
+                            + " (" + liq.getPeriodoEtiqueta() + ") se envió por correo a " + destino + ".");
+        } catch (DatosInvalidosException | RecursoNoEncontradoException | ReglaNegocioException ex) {
+            redirectAttributes.addFlashAttribute("errorOperacion", ex.getMessage());
+        }
+        return "redirect:/liquidaciones-familia?emitidaId=" + id;
     }
 
     @GetMapping("/liquidaciones-familia/{id}/pdf")
@@ -137,6 +172,7 @@ public class LiquidacionFamiliaController {
         model.addAttribute("mesActual", ahora.getMonthValue());
         model.addAttribute("anioActual", ahora.getYear());
         model.addAttribute("liquidacionesEmitidas", liquidacionService.listarEmitidas());
+        model.addAttribute("correoConfigurado", correoService.estaConfigurado());
     }
 
     private static String nombreArchivo(LiquidacionFamilia liq, String ext) {

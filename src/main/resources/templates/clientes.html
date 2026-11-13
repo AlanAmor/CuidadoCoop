@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Clientes | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css(v=7)}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=11)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
@@ -69,7 +69,12 @@
                              th:text="|DNI ${cliente.dniPaciente}|"></div>
                     </td>
                     <td th:text="${cliente.nombreFamiliar}"></td>
-                    <td th:text="|${cliente.telefono}${cliente.correo != null and !#strings.isEmpty(cliente.correo) ? ' · ' + cliente.correo : ''}|"></td>
+                    <td>
+                        <div th:text="${cliente.telefono}"></div>
+                        <div class="muted" style="font-size:0.82rem;"
+                             th:if="${cliente.correo != null and !#strings.isEmpty(cliente.correo)}"
+                             th:text="${cliente.correo}"></div>
+                    </td>
                     <td>
                         <div th:text="${cliente.domicilio}"></div>
                         <div class="muted" style="font-size:0.82rem;"

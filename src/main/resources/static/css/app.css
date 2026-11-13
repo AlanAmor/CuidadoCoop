@@ -384,19 +384,31 @@ td {
     background: #8e2929;
 }
 
+td.row-actions,
 .row-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
+    display: table-cell;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
-.row-actions .button {
+.row-actions form {
+    display: inline-block;
+    margin: 0;
+    vertical-align: middle;
+}
+
+.row-actions > .button,
+.row-actions > form > .button {
     min-height: 32px;
     padding: 0 10px;
     font-size: 12.5px;
     border-radius: 7px;
     white-space: nowrap;
+    vertical-align: middle;
+}
+
+.row-actions > *:not(:last-child) {
+    margin-right: 5px;
 }
 
 .days-badges {
@@ -409,10 +421,6 @@ td {
 .days-badges .badge {
     padding: 2px 7px;
     font-size: 11px;
-}
-
-.row-actions form {
-    margin: 0;
 }
 
 .legajo-panel {

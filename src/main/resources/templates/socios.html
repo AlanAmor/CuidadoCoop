@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Socios | CuidadoCoop</title>
-    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css(v=7)}">
 </head>
 <body>
 <div th:replace="~{fragments/layout :: header}"></div>
@@ -98,9 +98,11 @@
                     </td>
                     <td th:text="${socio.especialidad.etiqueta}"></td>
                     <td>
-                        <span class="badge" th:each="d : ${T(java.time.DayOfWeek).values()}"
-                              th:if="${socio.diasDisponibles.contains(d)}"
-                              th:text="${#strings.capitalize(d.getDisplayName(T(java.time.format.TextStyle).SHORT, T(java.util.Locale).forLanguageTag('es')))}"></span>
+                        <div class="days-badges">
+                            <span class="badge" th:each="d : ${T(java.time.DayOfWeek).values()}"
+                                  th:if="${socio.diasDisponibles.contains(d)}"
+                                  th:text="${#strings.capitalize(d.getDisplayName(T(java.time.format.TextStyle).SHORT, T(java.util.Locale).forLanguageTag('es')))}"></span>
+                        </div>
                     </td>
                     <td><span class="badge" th:text="${socio.estado.etiqueta}"></span></td>
                     <td class="row-actions">

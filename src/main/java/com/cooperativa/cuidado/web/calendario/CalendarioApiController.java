@@ -25,11 +25,13 @@ public class CalendarioApiController {
     public CalendarioRespuesta consultar(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) Long socioId,
             HttpServletRequest request) {
         String dniFiltro = sesionHelper.obtenerUsuarioActual(request)
                 .filter(UsuarioCuenta::esSoloTurnosPropios)
                 .map(UsuarioCuenta::getDni)
                 .orElse(null);
-        return calendarioService.consultar(desde, hasta, dniFiltro);
+        Long socioIdEfectivo = dniFiltro != null ? null : socioId;
+        return calendarioService.consultar(desde, hasta, dniFiltro, socioIdEfectivo);
     }
 }

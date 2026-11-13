@@ -278,6 +278,17 @@ public class AsistenciaService {
                     existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
                 }
             }
+            case "COMPLETA" -> {
+                if (existente.getMarcacionEntrada() != null && existente.getMarcacionSalida() != null) {
+                    throw new ReglaNegocioException(
+                            "La asistencia completa de este turno ya fue registrada. Si necesitás corregirla, contactá al administrador.");
+                }
+                existente.setMarcacionEntrada(inicioDe(existente.getFecha(), existente.getHoraInicio()));
+                existente.setMarcacionSalida(finDe(existente.getFecha(), existente.getHoraInicio(), existente.getHoraFin()));
+                if (aclaracion != null) {
+                    existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+                }
+            }
             case "ACLARACION" -> existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
             default -> throw new DatosInvalidosException(
                     "Seleccioná una acción válida (entrada, salida o aclaración).");
@@ -320,6 +331,13 @@ public class AsistenciaService {
             case "SALIDA" -> {
                 existente.setMarcacionSalida(
                         marcacionSalida != null ? marcacionSalida.truncatedTo(ChronoUnit.MINUTES) : ahora);
+                if (aclaracion != null) {
+                    existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
+                }
+            }
+            case "COMPLETA" -> {
+                existente.setMarcacionEntrada(inicioDe(existente.getFecha(), existente.getHoraInicio()));
+                existente.setMarcacionSalida(finDe(existente.getFecha(), existente.getHoraInicio(), existente.getHoraFin()));
                 if (aclaracion != null) {
                     existente.setAclaracionTurno(normalizarAclaracion(aclaracion));
                 }

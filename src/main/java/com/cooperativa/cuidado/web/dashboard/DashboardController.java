@@ -7,6 +7,7 @@ import com.cooperativa.cuidado.socio.EstadoSocio;
 import com.cooperativa.cuidado.socio.SocioRepository;
 import com.cooperativa.cuidado.web.seguridad.SesionHelper;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -71,6 +72,8 @@ public class DashboardController {
             model.addAttribute("sociosDisponibles",
                     socioRepository.countByEstado(EstadoSocio.DISPONIBLE_REEMPLAZO));
             model.addAttribute("horasMes", horasMes == null ? BigDecimal.ZERO : horasMes);
+            model.addAttribute("sociosCalendario",
+                    socioRepository.findAll(Sort.by("apellido", "nombre")));
         }
 
         model.addAttribute("fechaActual", hoy);

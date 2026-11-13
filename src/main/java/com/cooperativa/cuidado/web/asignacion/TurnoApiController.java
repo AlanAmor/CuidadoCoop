@@ -203,6 +203,7 @@ public class TurnoApiController {
             String msg = switch (accion != null ? accion.trim().toUpperCase() : "") {
                 case "ENTRADA" -> "Entrada del turno registrada correctamente.";
                 case "SALIDA" -> "Salida del turno registrada correctamente.";
+                case "COMPLETA" -> "Asistencia completa registrada con el horario correspondiente al turno.";
                 case "ACLARACION" -> "Aclaración del turno guardada correctamente.";
                 default -> "Registro de entrada, salida y aclaración actualizado correctamente.";
             };

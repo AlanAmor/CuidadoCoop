@@ -79,6 +79,9 @@
                           th:text="${turno.marcacionSalida != null ? '✓ Salida: ' + #temporals.format(turno.marcacionSalida, 'dd/MM HH:mm') : ''}"></span>
                     <button type="button" class="button button-secondary button-sm js-quick-salida"
                             th:hidden="${turno.marcacionSalida != null}">⏹ Marcar salida</button>
+
+                    <button type="button" class="button button-primary button-sm js-quick-completa"
+                            th:hidden="${turno.marcacionEntrada != null and turno.marcacionSalida != null}">✓ Marcar asistencia completa</button>
                 </div>
                 <div class="field today-shift-note">
                     <label th:for="|nota-turno-${turno.id}|">Aclaración del turno (opcional)</label>
@@ -112,6 +115,13 @@
                     <button class="button button-quiet button-icon" id="calendar-next" type="button"
                             aria-label="Período siguiente">›</button>
                 </div>
+                <label class="visually-hidden" for="calendar-socio-filter" th:if="${!vistaSocioPropia}">Filtrar por socio o cuidador</label>
+                <select id="calendar-socio-filter" aria-label="Filtrar por socio o cuidador" th:if="${!vistaSocioPropia}">
+                    <option value="">Todos los socios / cuidadores</option>
+                    <option th:each="s : ${sociosCalendario}"
+                            th:value="${s.id}"
+                            th:text="|${s.apellido}, ${s.nombre}|"></option>
+                </select>
                 <label class="visually-hidden" for="calendar-date">Ir a una fecha</label>
                 <input id="calendar-date" type="date" th:value="${fechaActual}" aria-label="Ir a una fecha">
                 <label class="visually-hidden" for="calendar-view">Vista del calendario</label>
@@ -190,6 +200,6 @@
         </div>
     </section>
 </main>
-<script th:src="@{/js/calendario.js(v=6)}" defer></script>
+<script th:src="@{/js/calendario.js(v=7)}" defer></script>
 </body>
 </html>

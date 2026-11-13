@@ -36,11 +36,17 @@ public class CalendarioService {
 
     @Transactional(readOnly = true)
     public CalendarioRespuesta consultar(LocalDate desde, LocalDate hasta) {
-        return consultar(desde, hasta, null);
+        return consultar(desde, hasta, null, null);
     }
 
     @Transactional(readOnly = true)
     public CalendarioRespuesta consultar(LocalDate desde, LocalDate hasta, String dniSocioFiltro) {
+        return consultar(desde, hasta, dniSocioFiltro, null);
+    }
+
+    @Transactional(readOnly = true)
+    public CalendarioRespuesta consultar(
+            LocalDate desde, LocalDate hasta, String dniSocioFiltro, Long socioIdFiltro) {
         if (desde == null || hasta == null || hasta.isBefore(desde)) {
             throw new DatosInvalidosException("Seleccioná un rango de fechas válido para consultar el calendario.");
         }
@@ -54,6 +60,8 @@ public class CalendarioService {
         List<EventoCalendario> eventos = asistencias.stream()
                 .filter(asistencia -> dniSocioFiltro == null
                         || dniSocioFiltro.equals(asistencia.getSocio().getDni()))
+                .filter(asistencia -> socioIdFiltro == null
+                        || socioIdFiltro.equals(asistencia.getSocio().getId()))
                 .map(this::convertirEvento)
                 .filter(evento -> evento.inicio().isBefore(hastaExclusivo.atStartOfDay())
                         && evento.fin().isAfter(desde.atStartOfDay()))

@@ -7,6 +7,7 @@
     const periodLabel = document.getElementById("calendar-period");
     const viewSelect = document.getElementById("calendar-view");
     const dateInput = document.getElementById("calendar-date");
+    const socioFilterSelect = document.getElementById("calendar-socio-filter");
     const errorBox = document.getElementById("calendar-error");
     const availablePartners = document.getElementById("available-partners");
     const unassignedServices = document.getElementById("unassigned-services");
@@ -40,6 +41,12 @@
             render();
         }
     });
+    if (socioFilterSelect) {
+        socioFilterSelect.addEventListener("change", () => {
+            transitionDir = 0;
+            render();
+        });
+    }
 
     bindTodayQuickCards();
     render();
@@ -81,6 +88,9 @@
             desde: formatDate(range.start),
             hasta: formatDate(range.end)
         });
+        if (socioFilterSelect && socioFilterSelect.value) {
+            params.set("socioId", socioFilterSelect.value);
+        }
 
         fetch(`/api/calendario?${params.toString()}`, {
             headers: {Accept: "application/json"}
@@ -388,6 +398,7 @@
         const entBtn = card.querySelector(".js-quick-entrada");
         const salBadge = card.querySelector(".js-quick-salida-badge");
         const salBtn = card.querySelector(".js-quick-salida");
+        const compBtn = card.querySelector(".js-quick-completa");
         const notaInput = card.querySelector(".js-quick-aclaracion");
 
         if (entBadge && entBtn) {
@@ -410,6 +421,9 @@
                 salBtn.hidden = false;
             }
         }
+        if (compBtn) {
+            compBtn.hidden = Boolean(data.marcacionEntrada && data.marcacionSalida);
+        }
         if (notaInput && data.aclaracionTurno !== undefined) {
             notaInput.value = data.aclaracionTurno || "";
         }
@@ -423,6 +437,7 @@
             }
             const entBtn = card.querySelector(".js-quick-entrada");
             const salBtn = card.querySelector(".js-quick-salida");
+            const compBtn = card.querySelector(".js-quick-completa");
             const saveNotaBtn = card.querySelector(".js-quick-guardar-nota");
             const notaInput = card.querySelector(".js-quick-aclaracion");
             const msgSpan = card.querySelector(".js-quick-msg");
@@ -464,6 +479,9 @@
             }
             if (salBtn) {
                 salBtn.addEventListener("click", () => runQuickAction("SALIDA", salBtn));
+            }
+            if (compBtn) {
+                compBtn.addEventListener("click", () => runQuickAction("COMPLETA", compBtn));
             }
             if (saveNotaBtn) {
                 saveNotaBtn.addEventListener("click", () => runQuickAction("ACLARACION", saveNotaBtn));
@@ -710,7 +728,9 @@
 
         if (esAdmin) {
             const quickBar = createElement("div", "marcacion-status-row");
-            const btnNowIn = createElement("button", "button button-primary button-sm", "▶ Marcar entrada ahora");
+            const btnComplete = createElement("button", "button button-primary button-sm", "✓ Marcar asistencia completa");
+            btnComplete.type = "button";
+            const btnNowIn = createElement("button", "button button-secondary button-sm", "▶ Marcar entrada ahora");
             btnNowIn.type = "button";
             const btnNowOut = createElement("button", "button button-secondary button-sm", "⏹ Marcar salida ahora");
             btnNowOut.type = "button";
@@ -718,7 +738,7 @@
             btnScheduled.type = "button";
             const btnClear = createElement("button", "button button-quiet button-sm", "Limpiar marcas");
             btnClear.type = "button";
-            quickBar.append(btnNowIn, btnNowOut, btnScheduled, btnClear);
+            quickBar.append(btnComplete, btnNowIn, btnNowOut, btnScheduled, btnClear);
             box.appendChild(quickBar);
 
             const dtGrid = createElement("div", "form-grid");
@@ -767,6 +787,14 @@
                     });
             };
 
+            btnComplete.addEventListener("click", () => {
+                inField.input.value = toLocalDateTimeInput(event.inicio);
+                outField.input.value = toLocalDateTimeInput(event.fin);
+                runAdminAction({
+                    accion: "COMPLETA",
+                    aclaracionTurno: noteInput.value
+                }, btnComplete);
+            });
             btnNowIn.addEventListener("click", () => runAdminAction({
                 accion: "ENTRADA",
                 aclaracionTurno: noteInput.value
@@ -842,6 +870,13 @@
             btnOut.type = "button";
             btnOut.addEventListener("click", () => runSocioAction("SALIDA", btnOut));
             statusRow.appendChild(btnOut);
+        }
+
+        if (!event.marcacionEntrada || !event.marcacionSalida) {
+            const btnComplete = createElement("button", "button button-primary button-sm", "✓ Marcar asistencia completa");
+            btnComplete.type = "button";
+            btnComplete.addEventListener("click", () => runSocioAction("COMPLETA", btnComplete));
+            statusRow.appendChild(btnComplete);
         }
 
         const btnSaveNote = createElement("button", "button button-quiet button-sm", "Guardar aclaración");

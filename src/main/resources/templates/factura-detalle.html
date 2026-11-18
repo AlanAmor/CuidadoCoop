@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="|${factura.comprobanteFormateado} - CuidadoCoop|">Factura ARCA | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        .invoice-paper {
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin: 20px 0;
+            color: #0f172a;
+        }
+        .inv-head-grid {
+            display: grid;
+            grid-template-columns: 1fr 90px 1fr;
+            border: 1px solid #94a3b8;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .inv-head-col {
+            padding: 16px;
+        }
+        .inv-head-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            border-left: 1px solid #94a3b8;
+            border-right: 1px solid #94a3b8;
+        }
+        .inv-type-letter {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #00576c;
+        }
+        .inv-type-code {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+        }
+        .inv-period-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+        .inv-client-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            font-size: 0.88rem;
+        }
+        .inv-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            margin-bottom: 16px;
+        }
+        .inv-table th {
+            background: #00576c;
+            color: #ffffff;
+            padding: 8px 10px;
+            font-size: 0.82rem;
+        }
+        .inv-table td {
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
+        }
+        .inv-totals {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 14px 18px;
+            background: #f8fafc;
+            margin-bottom: 18px;
+        }
+        .inv-arca-footer {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 16px;
+            align-items: center;
+            border-top: 2px dashed #94a3b8;
+            padding-top: 18px;
+        }
+        .barcode-box {
+            font-family: monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            background: #f8fafc;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+        .cae-highlight {
+            background: #f0fdf4;
+            border: 2px solid #16a34a;
+            border-radius: 8px;
+            padding: 12px 16px;
+            text-align: right;
+        }
+        .cae-number {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #15803d;
+            letter-spacing: 0.05em;
+        }
+        @media print {
+            header, .page-heading, .alert, .actions-bar {
+                display: none !important;
+            }
+            .invoice-paper {
+                border: none;
+                box-shadow: none;
+                padding: 0;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">COMPROBANTE AUTORIZADO POR ARCA</p>
+            <h1 th:text="${factura.comprobanteFormateado}">Factura C 0001-00000001</h1>
+            <p class="muted">
+                Emitida el <span th:text="${#temporals.format(factura.fechaEmision, 'dd/MM/yyyy')}">18/11/2026</span>
+                · Estado: <strong th:text="${factura.estado.descripcion}">Emitida</strong>
+            </p>
+        </div>
+        <div class="header-actions actions-bar">
+            <button type="button" class="button button-quiet" onclick="window.print()">🖨 Imprimir</button>
+            <a class="button button-primary" th:href="@{/facturas/{id}/pdf(id=${factura.id})}">⬇ Descargar PDF</a>
+            <a class="button button-secondary" th:href="@{/facturas}">Volver al listado</a>
+        </div>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <article class="invoice-paper">
+        <div style="text-align:center; font-size:0.75rem; font-weight:800; color:#64748b; margin-bottom:6px; letter-spacing:0.1em;">
+            ORIGINAL
+        </div>
+
+        <div class="inv-head-grid">
+            <div class="inv-head-col">
+                <h2 style="margin:0 0 4px 0; color:#00576c; font-size:1.15rem;">Cooperativa de Trabajo Grupo Azul Limitada</h2>
+                <div style="font-size:0.85rem; color:#475569;">CuidadoCoop · Cuidados Integrales</div>
+                <div style="font-size:0.85rem; margin-top:8px;">
+                    <strong>Domicilio Comercial:</strong> Amenabar 3427, Santa Fe, CP 3000
+                </div>
+                <div style="font-size:0.85rem;">
+                    <strong>Condición IVA:</strong> IVA Sujeto Exento
+                </div>
+            </div>
+
+            <div class="inv-head-center">
+                <span class="inv-type-letter" th:text="${factura.tipoComprobante.letra}">C</span>
+                <span class="inv-type-code" th:text="|COD. ${factura.tipoComprobante.codigoAfip}|">COD. 011</span>
+            </div>
+
+            <div class="inv-head-col">
+                <h3 style="margin:0 0 6px 0; color:#00576c; text-transform:uppercase; font-size:1.15rem;"
+                    th:text="${factura.tipoComprobante.descripcion}">FACTURA C</h3>
+                <div style="font-size:0.92rem; font-weight:700;">
+                    Punto de Venta: <span th:text="${factura.puntoVenta}">0001</span> · Comp. Nro: <span th:text="${factura.numeroComprobante}">00000001</span>
+                </div>
+                <div style="font-size:0.85rem; margin-top:6px;">
+                    <strong>Fecha de Emisión:</strong> <span th:text="${#temporals.format(factura.fechaEmision, 'dd/MM/yyyy')}">18/11/2026</span>
+                </div>
+                <div style="font-size:0.85rem;">
+                    <strong>CUIT:</strong> 30-71829384-5
+                </div>
+                <div style="font-size:0.85rem;">
+                    <strong>Ingresos Brutos:</strong> Exento · <strong>Inicio Actividades:</strong> 01/10/2020
+                </div>
+            </div>
+        </div>
+
+        <!-- Período de facturación -->
+        <div class="inv-period-bar">
+            <div>
+                <strong>Período Facturado Desde:</strong>
+                <span th:text="${factura.periodoDesde != null ? #temporals.format(factura.periodoDesde, 'dd/MM/yyyy') : '-'}">01/11/2026</span>
+            </div>
+            <div>
+                <strong>Hasta:</strong>
+                <span th:text="${factura.periodoHasta != null ? #temporals.format(factura.periodoHasta, 'dd/MM/yyyy') : '-'}">30/11/2026</span>
+            </div>
+            <div>
+                <strong>Vto. para el Pago:</strong>
+                <span th:text="${factura.fechaVencimientoPago != null ? #temporals.format(factura.fechaVencimientoPago, 'dd/MM/yyyy') : '-'}">10/12/2026</span>
+            </div>
+        </div>
+
+        <!-- Receptor -->
+        <div class="inv-client-box">
+            <div>
+                <div>
+                    <strong th:text="|${factura.tipoDocumentoReceptor.descripcion}:|">DNI:</strong>
+                    <span th:text="${factura.documentoReceptor}">12345678</span>
+                </div>
+                <div style="margin-top:4px;">
+                    <strong th:text="${factura.tipoReceptor != null and factura.tipoReceptor.name() == 'OBRA_SOCIAL' ? 'Razón Social (Obra Social):' : 'Apellido y Nombre:'}">Apellido y Nombre:</strong>
+                    <strong style="font-size:0.95rem; color:#0f172a;" th:text="${factura.denominacionReceptor}">GARCÍA Susana</strong>
+                </div>
+                <div style="margin-top:4px;">
+                    <strong>Condición frente al IVA:</strong>
+                    <span th:text="${factura.condicionIvaReceptor.descripcion}">Consumidor Final</span>
+                </div>
+            </div>
+            <div>
+                <div>
+                    <strong>Domicilio:</strong>
+                    <span th:text="${factura.domicilioReceptor}">Amenabar 1234</span>
+                </div>
+                <div style="margin-top:4px;">
+                    <strong>Condición de Venta:</strong> Contado / Transferencia bancaria
+                </div>
+                <div style="margin-top:4px;" th:if="${factura.tipoReceptor != null and factura.tipoReceptor.name() == 'OBRA_SOCIAL'}">
+                    <strong>Beneficiario / Paciente:</strong>
+                    <strong th:text="${factura.nombrePacienteAsociado}">GARCÍA Susana</strong>
+                    <span th:if="${factura.numeroAfiliado != null and !factura.numeroAfiliado.isBlank()}"
+                          th:text="| · Nro Afiliado: ${factura.numeroAfiliado}|"></span>
+                </div>
+                <div style="margin-top:4px;" th:if="${factura.emailReceptor != null and !factura.emailReceptor.isBlank()}">
+                    <strong>Correo:</strong>
+                    <span th:text="${factura.emailReceptor}"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de ítems -->
+        <table class="inv-table">
+            <thead>
+            <tr>
+                <th style="width:5%; text-align:center;">#</th>
+                <th style="width:48%; text-align:left;">Descripción / Servicio</th>
+                <th style="width:12%; text-align:right;">Cantidad</th>
+                <th style="width:10%; text-align:center;">U. Medida</th>
+                <th style="width:12%; text-align:right;">Precio Unit.</th>
+                <th style="width:13%; text-align:right;">Subtotal</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="linea, iter : ${factura.lineas}">
+                <td style="text-align:center;" th:text="${iter.count}">1</td>
+                <td th:text="${linea.descripcion}">Servicio de cuidado domiciliario</td>
+                <td style="text-align:right;" th:text="${#numbers.formatDecimal(linea.cantidad, 1, 2)}">40,00</td>
+                <td style="text-align:center;" th:text="${linea.unidadMedida}">horas</td>
+                <td style="text-align:right;" th:text="|$ ${#numbers.formatDecimal(linea.precioUnitario, 1, 2)}|">$ 4.500,00</td>
+                <td style="text-align:right; font-weight:700;" th:text="|$ ${#numbers.formatDecimal(linea.subtotal, 1, 2)}|">$ 180.000,00</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <!-- Totales -->
+        <div class="inv-totals">
+            <div style="max-width:55%;">
+                <strong style="display:block; font-size:0.85rem; color:#475569;">Observaciones:</strong>
+                <p style="margin:4px 0 0 0; font-size:0.85rem; color:#334155;"
+                   th:text="${factura.observaciones != null and !factura.observaciones.isBlank() ? factura.observaciones : 'Comprobante emitido de acuerdo a la normativa legal y estatutaria vigente.'}"></p>
+                <div th:if="${factura.liquidacionFamiliaId != null}" style="margin-top:8px;">
+                    <a th:href="@{/liquidaciones-familia?emitidaId={id}(id=${factura.liquidacionFamiliaId})}"
+                       class="button button-quiet button-sm">Ver Liquidación Familia de origen</a>
+                </div>
+            </div>
+            <div style="min-width:240px; text-align:right; font-size:0.92rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>Subtotal:</span>
+                    <strong th:text="|$ ${#numbers.formatDecimal(factura.subtotal, 1, 2)}|">$ 0,00</strong>
+                </div>
+                <div th:if="${factura.porcentajeIva > 0}" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span th:text="|IVA (${#numbers.formatDecimal(factura.porcentajeIva, 1, 2)}%):|">IVA:</span>
+                    <strong th:text="|$ ${#numbers.formatDecimal(factura.importeIva, 1, 2)}|">$ 0,00</strong>
+                </div>
+                <div th:if="${factura.importeOtrosTributos > 0}" style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>Otros Tributos:</span>
+                    <strong th:text="|$ ${#numbers.formatDecimal(factura.importeOtrosTributos, 1, 2)}|">$ 0,00</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:800; color:#00576c; border-top:2px solid #cbd5e1; padding-top:6px; margin-top:6px;">
+                    <span>Total:</span>
+                    <strong th:text="|$ ${#numbers.formatDecimal(factura.total, 1, 2)}|">$ 0,00</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pie ARCA Oficial -->
+        <div class="inv-arca-footer">
+            <div>
+                <strong style="color:#00576c; font-size:0.9rem;">Comprobante Autorizado por ARCA</strong>
+                <div style="font-size:0.78rem; color:#64748b;">Agencia de Recaudación y Control Aduanero (ex AFIP)</div>
+                <div style="margin-top:6px;">
+                    <span style="font-size:0.75rem; color:#475569; display:block;">Código de Barras Fiscal:</span>
+                    <span class="barcode-box" th:text="${factura.codigoBarras}">307182938450110000174839201928475202611284</span>
+                </div>
+            </div>
+            <div class="cae-highlight">
+                <div style="font-size:0.8rem; font-weight:700; color:#166534;">C.A.E. Nº (Código de Autorización Electrónico)</div>
+                <div class="cae-number" th:text="${factura.cae}">74839201928475</div>
+                <div style="font-size:0.82rem; font-weight:600; color:#14532d; margin-top:4px;">
+                    Fecha de Vto. de CAE: <span th:text="${#temporals.format(factura.fechaVencimientoCae, 'dd/MM/yyyy')}">28/11/2026</span>
+                </div>
+                <div style="margin-top:6px;">
+                    <a th:href="${factura.qrData}" target="_blank" rel="noopener"
+                       style="font-size:0.75rem; color:#0369a1; text-decoration:underline;">Verificar comprobante en ARCA QR ↗</a>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    <!-- Modal o formulario de anulación -->
+    <section class="content-card" style="margin-top:20px;" th:if="${factura.estado.name() == 'EMITIDA'}">
+        <h3>Anulación de comprobante fiscal</h3>
+        <p class="muted">Si hubo un error en la emisión, podés anular esta factura registrando el motivo correspondiente.</p>
+        <form method="post" th:action="@{/facturas/{id}/anular(id=${factura.id})}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+            <div class="field" style="flex:1; min-width:240px; margin-bottom:0;">
+                <label for="motivoAnulacion">Motivo de la anulación</label>
+                <input type="text" id="motivoAnulacion" name="motivo" required placeholder="Ej.: Error en datos del destinatario o duplicado">
+            </div>
+            <button type="submit" class="button button-danger" onclick="return confirm('¿Seguro que deseás anular esta factura? Esta acción no se puede deshacer.')">
+                Anular Factura
+            </button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

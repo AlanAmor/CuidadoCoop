@@ -1,6 +1,7 @@
 target/
 legajos/
 documentos/
+data/
 .vscode/
 *.log
 *.class

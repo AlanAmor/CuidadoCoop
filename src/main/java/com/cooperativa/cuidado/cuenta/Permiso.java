@@ -61,6 +61,9 @@ public enum Permiso {
     CONFIGURAR_CORREO(
             "Histórico, estadísticas y cuentas",
             "Configurar cuenta de correo electrónico para envío de liquidaciones"),
+    GESTIONAR_FACTURACION(
+            "Facturación y comprobantes",
+            "Emitir y gestionar facturas electrónicas de ARCA para servicios y liquidaciones"),
     GESTIONAR_CUENTAS(
             "Histórico, estadísticas y cuentas",
             "Gestionar cuentas de usuarios y configurar roles y permisos");

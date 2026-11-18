@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Padrón de Obras Sociales | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=11)}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">FACTURACIÓN Y COBERTURAS</p>
+            <h1>Padrón de Obras Sociales y Prepagas</h1>
+            <p class="muted">Administrá el padrón de obras sociales y prepagas con CUIT, Razón Social y condición fiscal para autocompletar la facturación electrónica ARCA.</p>
+        </div>
+        <div class="actions">
+            <a class="button button-secondary" th:href="@{/facturas}">Volver a Facturación</a>
+            <a class="button button-primary" th:href="@{/facturas/nueva}">+ Nueva Factura</a>
+        </div>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <!-- Formulario para agregar / editar Obra Social -->
+    <div class="content-card form-card" style="margin-bottom: 24px;">
+        <h2 style="font-size: 1.15rem; color: #00576c; margin-top: 0; margin-bottom: 14px;">Registrar nueva Obra Social / Prepaga</h2>
+        <form method="post" th:action="@{/obras-sociales}" th:object="${nuevaObraSocial}">
+            <div class="form-grid">
+                <div class="field" style="grid-column: span 2;">
+                    <label for="f-nombre">Nombre Comercial / Sigla *</label>
+                    <input type="text" id="f-nombre" name="nombre" required placeholder="Ej.: PAMI, IAPOS, OSDE, Swiss Medical">
+                </div>
+                <div class="field">
+                    <label for="f-cuit">CUIT (con o sin guiones) *</label>
+                    <input type="text" id="f-cuit" name="cuit" required placeholder="Ej.: 30-52625211-9">
+                </div>
+                <div class="field">
+                    <label for="f-condicionIva">Condición frente al IVA</label>
+                    <select id="f-condicionIva" name="condicionIva">
+                        <option th:each="ci : ${condicionesIva}"
+                                th:value="${ci.name()}"
+                                th:text="${ci.descripcion}"
+                                th:selected="${ci.name() == 'IVA_EXENTO'}"></option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid" style="margin-top: 12px;">
+                <div class="field" style="grid-column: span 2;">
+                    <label for="f-razonSocial">Razón Social Oficial (según constancia ARCA)</label>
+                    <input type="text" id="f-razonSocial" name="razonSocial" placeholder="Ej.: INSTITUTO NACIONAL DE SERVICIOS SOCIALES PARA JUBILADOS Y PENSIONADOS">
+                </div>
+                <div class="field" style="grid-column: span 2;">
+                    <label for="f-domicilioFiscal">Domicilio Fiscal / Sede Central</label>
+                    <input type="text" id="f-domicilioFiscal" name="domicilioFiscal" placeholder="Ej.: Av. Corrientes 655, CABA">
+                </div>
+            </div>
+
+            <div class="form-grid" style="margin-top: 12px;">
+                <div class="field">
+                    <label for="f-telefono">Teléfono de Contacto</label>
+                    <input type="text" id="f-telefono" name="telefono" placeholder="Ej.: 0800-222-7264">
+                </div>
+                <div class="field">
+                    <label for="f-correo">Correo Electrónico (Facturación / Auditoría)</label>
+                    <input type="email" id="f-correo" name="correo" placeholder="facturacion@obrasocial.org">
+                </div>
+                <div class="field" style="grid-column: span 2;">
+                    <label for="f-observaciones">Observaciones / Instrucciones de Facturación</label>
+                    <input type="text" id="f-observaciones" name="observaciones" placeholder="Ej.: Requiere adjuntar planilla de asistencia firmada y orden médica.">
+                </div>
+            </div>
+
+            <div style="margin-top: 16px; text-align: right;">
+                <button type="submit" class="button button-primary">Guardar en Padrón</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla de Obras Sociales Registradas -->
+    <div class="content-card table-card">
+        <h2 style="font-size: 1.1rem; color: #1e293b; padding: 16px 20px 0 20px; margin: 0;">Obras Sociales Registradas (<span th:text="${#lists.size(obrasSociales)}">0</span>)</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Nombre / Sigla</th>
+                    <th>CUIT</th>
+                    <th>Razón Social Oficial</th>
+                    <th>Condición IVA</th>
+                    <th>Domicilio Fiscal</th>
+                    <th>Tel / Contacto</th>
+                    <th style="width: 80px;">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(obrasSociales)}">
+                    <td colspan="7" class="empty-state">No hay obras sociales registradas en el padrón aún.</td>
+                </tr>
+                <tr th:each="os : ${obrasSociales}">
+                    <td><strong style="color:#00576c;" th:text="${os.nombre}">PAMI</strong></td>
+                    <td><code th:text="${os.cuit}">30-52625211-9</code></td>
+                    <td th:text="${os.razonSocial}">-</td>
+                    <td><span class="badge" th:text="${os.condicionIva.descripcion}">IVA Exento</span></td>
+                    <td th:text="${os.domicilioFiscal ?: '-'}">-</td>
+                    <td th:text="${os.telefono ?: (os.correo ?: '-')}">-</td>
+                    <td class="row-actions">
+                        <form method="post" th:action="@{/obras-sociales/{id}/eliminar(id=${os.id})}"
+                              data-confirm="¿Seguro que deseás eliminar esta Obra Social del padrón?">
+                            <button type="submit" class="button button-danger button-sm">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>

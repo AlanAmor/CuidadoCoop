@@ -88,7 +88,8 @@ public class CuentasIniciales implements ApplicationRunner {
                         Permiso.AGREGAR_CLIENTES,
                         Permiso.AGREGAR_SOCIOS,
                         Permiso.AGREGAR_LEGAJOS,
-                        Permiso.REALIZAR_PRESUPUESTOS));
+                        Permiso.REALIZAR_PRESUPUESTOS,
+                        Permiso.GESTIONAR_FACTURACION));
 
         RolUsuario rolSocio = asegurarRol(
                 "SOCIO",

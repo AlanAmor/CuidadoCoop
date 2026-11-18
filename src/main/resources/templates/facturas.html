@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Facturación Electrónica ARCA | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=11)}">
+    <style>
+        .filter-panel {
+            background: #ffffff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
+        }
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 10px;
+        }
+        .filter-header h2 {
+            font-size: 1.05rem;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-header span.pill-count {
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+        }
+        .search-main-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .search-main-input-wrap {
+            flex: 1;
+            position: relative;
+        }
+        .search-main-input-wrap input {
+            width: 100%;
+            height: 44px;
+            padding: 10px 16px 10px 42px;
+            font-size: 0.95rem;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 9px;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            background: #f8fafc;
+        }
+        .search-main-input-wrap input:focus {
+            background: #ffffff;
+            border-color: #00576c;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 87, 108, 0.12);
+        }
+        .search-main-input-wrap svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: #94a3b8;
+            pointer-events: none;
+        }
+        .filter-secondary-row {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr 1.2fr auto;
+            gap: 16px;
+            align-items: end;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 14px 16px;
+        }
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .filter-field label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #475569;
+        }
+        .filter-field input, .filter-field select {
+            height: 38px;
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 0.88rem;
+            background: #ffffff;
+            color: #1e293b;
+        }
+        .filter-field input:focus, .filter-field select:focus {
+            border-color: #00576c;
+            outline: none;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .arca-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+        .arca-badge.os {
+            background: #fef3c7;
+            color: #b45309;
+            border-color: #fde68a;
+        }
+        .arca-status-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .arca-status-pill.emitida {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+        .arca-status-pill.anulada {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        @media (max-width: 900px) {
+            .filter-secondary-row {
+                grid-template-columns: 1fr;
+            }
+            .search-main-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">COMPROBANTES FISCALES</p>
+            <h1>Facturador ARCA</h1>
+            <p class="muted">Emisión y consulta de facturas electrónicas autorizadas con Código de Autorización Electrónico (CAE).</p>
+        </div>
+        <div class="header-actions">
+            <a class="button button-secondary" th:href="@{/obras-sociales}">📋 Padrón de Obras Sociales</a>
+            <a class="button button-primary" th:href="@{/facturas/nueva}">＋ Nueva Factura ARCA</a>
+        </div>
+    </section>
+
+    <div class="alert alert-success" th:if="${mensajeExito}" th:text="${mensajeExito}" role="status"></div>
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <!-- Tarjetas de Métricas -->
+    <section class="metrics" aria-label="Métricas de facturación">
+        <article class="metric-card">
+            <span class="metric-label">Comprobantes emitidos</span>
+            <strong class="metric-value" th:text="${cantidadFacturas}">0</strong>
+            <span class="metric-note">Facturas en el listado</span>
+        </article>
+        <article class="metric-card metric-card-accent">
+            <span class="metric-label">Total facturado</span>
+            <strong class="metric-value" th:text="|$ ${#numbers.formatDecimal(totalFacturado, 1, 2)}|">$ 0,00</strong>
+            <span class="metric-note">Monto fiscal acumulado</span>
+        </article>
+        <article class="metric-card">
+            <span class="metric-label">Punto de venta fiscal</span>
+            <strong class="metric-value">0001</strong>
+            <span class="metric-note">ARCA Web Services Electrónico</span>
+        </article>
+    </section>
+
+    <!-- Buscador y Filtros Estilizados -->
+    <section class="filter-panel" aria-label="Búsqueda de facturas">
+        <div class="filter-header">
+            <h2>
+                🔍 Buscador y Filtros de Facturas
+            </h2>
+            <span class="pill-count" th:text="|${cantidadFacturas} comprobantes|">0 comprobantes</span>
+        </div>
+
+        <form method="get" th:action="@{/facturas}">
+            <div class="search-main-row">
+                <div class="search-main-input-wrap">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    <input type="search" id="buscar" name="buscar" th:value="${buscar}"
+                           autocomplete="off"
+                           placeholder="Buscar por paciente, razón social, CUIT/DNI, número de comprobante o CAE...">
+                </div>
+                <button type="submit" class="button button-primary" style="height: 44px; padding: 0 22px;">Buscar</button>
+                <a th:href="@{/facturas}" class="button button-quiet" style="height: 44px; line-height: 42px; padding: 0 16px;">Limpiar</a>
+            </div>
+
+            <div class="filter-secondary-row">
+                <div class="filter-field">
+                    <label for="tipoReceptor">Tipo de Destinatario</label>
+                    <select id="tipoReceptor" name="tipoReceptor">
+                        <option value="">Todos los destinatarios (Pacientes y Obras Sociales)</option>
+                        <option value="PACIENTE" th:selected="${tipoReceptor != null and tipoReceptor.name() == 'PACIENTE'}">👤 Solo Pacientes / Particulares</option>
+                        <option value="OBRA_SOCIAL" th:selected="${tipoReceptor != null and tipoReceptor.name() == 'OBRA_SOCIAL'}">🏥 Solo Obras Sociales y Prepagas</option>
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="desde">Emisión Desde</label>
+                    <input type="date" id="desde" name="desde" th:value="${desde}">
+                </div>
+
+                <div class="filter-field">
+                    <label for="hasta">Emisión Hasta</label>
+                    <input type="date" id="hasta" name="hasta" th:value="${hasta}">
+                </div>
+
+                <div class="filter-actions">
+                    <button type="submit" class="button button-secondary" style="height: 38px;">Aplicar filtros</button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <!-- Listado de Facturas Emitidas -->
+    <section class="content-card table-card">
+        <div class="table-card-header-search" style="padding: 18px 24px 14px 24px; border-bottom: 1px solid #f1f5f9;">
+            <h3 style="margin: 0; font-size: 1.15rem; color: #0f172a;">Comprobantes Registrados</h3>
+            <span class="muted" style="font-size: 0.88rem;" th:text="|Mostrando ${cantidadFacturas} factura(s)|">0 facturas</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Comprobante</th>
+                    <th>Destinatario Fiscal</th>
+                    <th>Receptor</th>
+                    <th>Período Prestado</th>
+                    <th>C.A.E.</th>
+                    <th style="text-align: right;">Total ($)</th>
+                    <th style="text-align: center;">Estado</th>
+                    <th style="text-align: center; width: 140px;">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="f : ${facturas}">
+                    <td>
+                        <strong th:text="${#temporals.format(f.fechaEmision, 'dd/MM/yyyy')}">18/11/2026</strong>
+                    </td>
+                    <td>
+                        <strong style="color: #00576c;" th:text="${f.comprobanteFormateado}">Factura C 0001-00000001</strong>
+                    </td>
+                    <td>
+                        <strong style="color: #1e293b;" th:text="${f.denominacionReceptor}">GARCÍA Susana</strong>
+                        <div class="muted" style="font-size: 0.8rem; margin-top: 2px;"
+                             th:text="|${f.tipoDocumentoReceptor != null ? f.tipoDocumentoReceptor.descripcion : 'Doc'}: ${f.documentoReceptor}|">DNI: 12345678</div>
+                        <div th:if="${f.tipoReceptor != null and f.tipoReceptor.name() == 'OBRA_SOCIAL' and f.nombrePacienteAsociado != null and !f.nombrePacienteAsociado.isBlank()}"
+                             style="font-size: 0.78rem; color: #0369a1; margin-top: 2px;">
+                            <span>👤 Pac: <strong th:text="${f.nombrePacienteAsociado}"></strong></span>
+                            <span th:if="${f.numeroAfiliado != null and !f.numeroAfiliado.isBlank()}"
+                                  th:text="| · Afil: ${f.numeroAfiliado}|"></span>
+                        </div>
+                    </td>
+                    <td>
+                        <span th:if="${f.tipoReceptor != null and f.tipoReceptor.name() == 'OBRA_SOCIAL'}"
+                              class="arca-badge os">🏥 Obra Social</span>
+                        <span th:if="${f.tipoReceptor == null or f.tipoReceptor.name() == 'PACIENTE'}"
+                              class="arca-badge">👤 Particular</span>
+                    </td>
+                    <td style="font-size: 0.85rem;" th:text="${f.periodoFormateado}">01/11/2026 al 30/11/2026</td>
+                    <td>
+                        <code style="font-size: 0.85rem; font-weight: 700; color: #0369a1; background: #f0fdf4; padding: 2px 6px; border-radius: 4px; border: 1px solid #bbf7d0;"
+                              th:text="${f.cae}">74839201928475</code>
+                    </td>
+                    <td style="text-align: right;">
+                        <strong style="font-size: 1.02rem; color: #0f172a;"
+                                th:text="|$ ${#numbers.formatDecimal(f.total, 1, 2)}|">$ 0,00</strong>
+                    </td>
+                    <td style="text-align: center;">
+                        <span th:class="|arca-status-pill ${f.estado.name().toLowerCase()}|"
+                              th:text="${f.estado.descripcion}">Emitida</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                            <a class="button button-quiet button-sm" th:href="@{/facturas/{id}(id=${f.id})}">Detalle</a>
+                            <a class="button button-primary button-sm" th:href="@{/facturas/{id}/pdf(id=${f.id})}">📄 PDF</a>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(facturas)}">
+                    <td colspan="9" class="empty-state" style="padding: 32px 16px;">
+                        No se encontraron facturas con los criterios de búsqueda aplicados.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

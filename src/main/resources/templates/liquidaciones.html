@@ -201,8 +201,15 @@
             </div>
             <div class="recibo-num-box">
                 <span class="eyebrow" style="margin:0;">RECIBO DE RETRIBUCIÓN</span>
-                <span class="recibo-num-badge" id="lbl-proximo-numero" th:text="${proximoNumeroFormateado}">N° 00001</span>
-                <small class="muted">Numeración correlativa automática (+1)</small>
+                <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px;">
+                    <span style="font-weight:700; color:#1e4ea8; font-size:1.1rem;">N°</span>
+                    <input type="number" min="1" step="1" name="numeroReciboManual" id="recibo-numeroManual"
+                           th:value="${proximoNumero}"
+                           placeholder="00001"
+                           title="Podés ingresar manualmente el número de recibo deseado o dejar el sugerido correlativo (+1)"
+                           style="width:115px; font-weight:800; font-size:1.15rem; color:#1e4ea8; text-align:right; border:1.5px solid #b8ccf0; border-radius:6px; padding:4px 8px; background:#f8fafc;">
+                </div>
+                <small class="muted">Editable manual · Aumenta +1 automáticamente</small>
             </div>
         </div>
 

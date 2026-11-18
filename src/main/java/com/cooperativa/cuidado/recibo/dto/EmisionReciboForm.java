@@ -10,6 +10,7 @@ import java.util.List;
 public class EmisionReciboForm {
 
     private Long socioId;
+    private Long numeroReciboManual;
     private String mesSeleccionado;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -57,6 +58,14 @@ public class EmisionReciboForm {
 
     public void setSocioId(Long socioId) {
         this.socioId = socioId;
+    }
+
+    public Long getNumeroReciboManual() {
+        return numeroReciboManual;
+    }
+
+    public void setNumeroReciboManual(Long numeroReciboManual) {
+        this.numeroReciboManual = numeroReciboManual;
     }
 
     public String getMesSeleccionado() {

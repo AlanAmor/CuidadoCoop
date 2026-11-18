@@ -153,6 +153,11 @@
                    th:href="@{/liquidaciones-familia/{id}/excel(id=${recienEmitida.id})}">
                     Descargar Excel (.xlsx)
                 </a>
+                <a class="button button-primary button-sm"
+                   th:href="@{/facturas/nueva(liquidacionFamiliaId=${recienEmitida.id})}"
+                   style="background:#00576c; border-color:#004657;">
+                    🧾 Emitir Factura ARCA
+                </a>
                 <form method="post"
                       th:action="@{/liquidaciones-familia/{id}/enviar-mail(id=${recienEmitida.id})}"
                       style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0;">
@@ -423,6 +428,9 @@
                                th:href="@{/liquidaciones-familia/{id}/pdf(id=${l.id})}">PDF</a>
                             <a class="button button-secondary button-sm"
                                th:href="@{/liquidaciones-familia/{id}/excel(id=${l.id})}">Excel</a>
+                            <a class="button button-quiet button-sm"
+                               th:href="@{/facturas/nueva(liquidacionFamiliaId=${l.id})}"
+                               title="Emitir Factura Electrónica ARCA">🧾 Facturar</a>
                             <details style="display:inline-block;">
                                 <summary class="button button-quiet button-sm" style="list-style:none; cursor:pointer;">
                                     ✉ Enviar mail

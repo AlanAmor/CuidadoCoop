@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nueva Factura ARCA | CuidadoCoop</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        .fiscal-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .receptor-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .receptor-tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px 16px;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #334155;
+            transition: all 0.2s;
+        }
+        .receptor-tab-btn.is-active {
+            border-color: #00576c;
+            background: #f0fdf4;
+            color: #00576c;
+        }
+        .lines-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .lines-table th, .lines-table td {
+            border: 1px solid #cbd5e1;
+            padding: 8px;
+        }
+        .lines-table th {
+            background: #00576c;
+            color: #ffffff;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+        .lines-table input, .lines-table select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px;
+            font-size: 0.88rem;
+        }
+        .totales-box {
+            background: #f1f5f9;
+            border: 2px solid #00576c;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .totales-row {
+            display: flex;
+            gap: 24px;
+            justify-content: space-between;
+            min-width: 280px;
+            font-size: 0.92rem;
+        }
+        .totales-row.grand-total {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #00576c;
+            border-top: 2px solid #cbd5e1;
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+        .preset-badge {
+            display: inline-block;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            cursor: pointer;
+            margin: 2px;
+        }
+        .preset-badge:hover {
+            background: #00576c;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+<main class="container">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">COMPROBANTES ELECTRÓNICOS</p>
+            <h1>Emitir Factura ARCA</h1>
+            <p class="muted">Generación fiscal con CAE ante ARCA para pacientes particulares u obras sociales.</p>
+        </div>
+        <div class="header-actions">
+            <a class="button button-secondary" th:href="@{/facturas}">Volver a facturas</a>
+        </div>
+    </section>
+
+    <div class="alert alert-info" th:if="${origenLiquidacion}">
+        <strong>Datos precargados desde la Liquidación Familia:</strong> Los conceptos, horas y montos fueron tomados automáticamente. Podés modificar los valores o cambiar el destinatario hacia una Obra Social antes de autorizar el comprobante.
+    </div>
+
+    <div class="alert alert-error" th:if="${errorOperacion}" th:text="${errorOperacion}" role="alert"></div>
+
+    <form method="post" th:action="@{/facturas}" id="form-factura">
+        <input type="hidden" name="clienteId" th:value="${form.clienteId}" id="f-clienteId">
+        <input type="hidden" name="liquidacionFamiliaId" th:value="${form.liquidacionFamiliaId}">
+
+        <!-- Datos del comprobante -->
+        <fieldset class="fiscal-box">
+            <legend><strong style="color:#00576c;">1. Datos del Comprobante Fiscal</strong></legend>
+            <div class="form-grid">
+                <div class="field">
+                    <label for="f-tipoComprobante">Tipo de Comprobante</label>
+                    <select id="f-tipoComprobante" name="tipoComprobante">
+                        <option th:each="tc : ${tiposComprobante}"
+                                th:value="${tc.name()}"
+                                th:text="|${tc.descripcion} (Cód. ${tc.codigoAfip})|"
+                                th:selected="${form.tipoComprobante == tc}">Factura C</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="f-puntoVenta">Punto de Venta</label>
+                    <input type="text" id="f-puntoVenta" name="puntoVenta" th:value="${form.puntoVenta}" maxlength="5" required>
+                </div>
+                <div class="field">
+                    <label for="f-fechaEmision">Fecha de Emisión</label>
+                    <input type="date" id="f-fechaEmision" name="fechaEmision" th:value="${form.fechaEmision}" required>
+                </div>
+                <div class="field">
+                    <label for="f-concepto">Concepto ARCA</label>
+                    <select id="f-concepto" name="concepto">
+                        <option value="SERVICIOS" th:selected="${form.concepto != null and form.concepto.name() == 'SERVICIOS'}">2 - Servicios</option>
+                        <option value="PRODUCTOS" th:selected="${form.concepto != null and form.concepto.name() == 'PRODUCTOS'}">1 - Productos</option>
+                        <option value="PRODUCTOS_Y_SERVICIOS" th:selected="${form.concepto != null and form.concepto.name() == 'PRODUCTOS_Y_SERVICIOS'}">3 - Productos y Servicios</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid" id="box-fechas-servicio" style="margin-top:12px;">
+                <div class="field">
+                    <label for="f-periodoDesde">Período de Servicio - Desde</label>
+                    <input type="date" id="f-periodoDesde" name="periodoDesde" th:value="${form.periodoDesde}">
+                </div>
+                <div class="field">
+                    <label for="f-periodoHasta">Período de Servicio - Hasta</label>
+                    <input type="date" id="f-periodoHasta" name="periodoHasta" th:value="${form.periodoHasta}">
+                </div>
+                <div class="field">
+                    <label for="f-fechaVencimientoPago">Vencimiento para el Pago</label>
+                    <input type="date" id="f-fechaVencimientoPago" name="fechaVencimientoPago" th:value="${form.fechaVencimientoPago}">
+                </div>
+            </div>
+
+            <!-- Banner de Carga Automática de Turnos por Período -->
+            <div id="banner-sincronizar-turnos" style="margin-top: 14px; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div>
+                    <strong style="color: #0369a1; font-size: 0.92rem;">🔄 Sincronización automática de turnos:</strong>
+                    <span id="txt-sincronizar-turnos" class="muted" style="font-size: 0.85rem; margin-left: 6px;">
+                        Al elegir cliente y período, se importarán automáticamente todas las horas trabajadas, viáticos y sanatorios registrados.
+                    </span>
+                </div>
+                <button type="button" id="btn-forzar-carga-turnos" class="button button-secondary button-sm" style="white-space: nowrap;">
+                    Cargar turnos del período
+                </button>
+            </div>
+        </fieldset>
+
+        <!-- Receptor / Destinatario -->
+        <fieldset class="fiscal-box">
+            <legend><strong style="color:#00576c;">2. Destinatario de la Factura</strong></legend>
+
+            <div class="receptor-tabs" role="tablist">
+                <button type="button" class="receptor-tab-btn is-active" id="btn-tab-paciente">
+                    👤 Facturar a Paciente / Particular
+                </button>
+                <button type="button" class="receptor-tab-btn" id="btn-tab-obrasocial">
+                    🏥 Facturar a Obra Social / Prepaga
+                </button>
+            </div>
+            <input type="hidden" name="tipoReceptor" id="f-tipoReceptor" th:value="${form.tipoReceptor != null ? form.tipoReceptor.name() : 'PACIENTE'}">
+
+            <!-- Panel Paciente / Particular -->
+            <div id="panel-paciente">
+                <div class="form-grid">
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="select-cliente-precarga">Autocompletar desde Cliente existente</label>
+                        <select id="select-cliente-precarga">
+                            <option value="">-- Seleccionar cliente para autocompletar --</option>
+                            <option th:each="c : ${clientes}"
+                                    th:value="${c.id}"
+                                    th:data-nombre="${c.nombrePaciente}"
+                                    th:data-dni="${c.dniPaciente}"
+                                    th:data-domicilio="${c.domicilio}"
+                                    th:data-correo="${c.correo}"
+                                    th:text="|${c.nombrePaciente} (DNI ${c.dniPaciente})|"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top:10px;">
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="f-denominacionReceptor">Nombre y Apellido del Paciente</label>
+                        <input type="text" id="f-denominacionReceptor" name="denominacionReceptor"
+                               th:value="${form.denominacionReceptor}" placeholder="Ej.: GARCÍA Susana" required>
+                    </div>
+                    <div class="field">
+                        <label for="f-tipoDocumentoReceptor">Tipo de Documento</label>
+                        <select id="f-tipoDocumentoReceptor" name="tipoDocumentoReceptor">
+                            <option value="DNI" th:selected="${form.tipoDocumentoReceptor != null and form.tipoDocumentoReceptor.name() == 'DNI'}">DNI</option>
+                            <option value="CUIT" th:selected="${form.tipoDocumentoReceptor != null and form.tipoDocumentoReceptor.name() == 'CUIT'}">CUIT</option>
+                            <option value="CUIL" th:selected="${form.tipoDocumentoReceptor != null and form.tipoDocumentoReceptor.name() == 'CUIL'}">CUIL</option>
+                            <option value="CONSUMIDOR_FINAL" th:selected="${form.tipoDocumentoReceptor != null and form.tipoDocumentoReceptor.name() == 'CONSUMIDOR_FINAL'}">Consumidor Final</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="f-documentoReceptor">Número de Documento</label>
+                        <input type="text" id="f-documentoReceptor" name="documentoReceptor"
+                               th:value="${form.documentoReceptor}" placeholder="DNI o CUIT">
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top:10px;">
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="f-domicilioReceptor">Domicilio</label>
+                        <input type="text" id="f-domicilioReceptor" name="domicilioReceptor"
+                               th:value="${form.domicilioReceptor}" placeholder="Calle, número, ciudad">
+                    </div>
+                    <div class="field">
+                        <label for="f-condicionIvaReceptor">Condición frente al IVA</label>
+                        <select id="f-condicionIvaReceptor" name="condicionIvaReceptor">
+                            <option th:each="ci : ${condicionesIva}"
+                                    th:value="${ci.name()}"
+                                    th:text="${ci.descripcion}"
+                                    th:selected="${form.condicionIvaReceptor == ci}">Consumidor Final</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="f-emailReceptor">Correo Electrónico (opcional)</label>
+                        <input type="email" id="f-emailReceptor" name="emailReceptor"
+                               th:value="${form.emailReceptor}" placeholder="correo@ejemplo.com">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Obra Social -->
+            <div id="panel-obrasocial" hidden>
+                <!-- Selector de Padrón de Obras Sociales -->
+                <div class="form-grid" style="margin-bottom: 12px; background: #fff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="select-obrasocial-padron" style="color: #1e3a8a; font-weight: 700;">
+                            📋 Seleccionar del Padrón de Obras Sociales / Prepagas
+                        </label>
+                        <select id="select-obrasocial-padron">
+                            <option value="">-- Elegir Obra Social registrada en el padrón --</option>
+                            <option th:each="os : ${obrasSocialesPadron}"
+                                    th:value="${os.id}"
+                                    th:data-nombre="${os.nombre}"
+                                    th:data-cuit="${os.cuit}"
+                                    th:data-razon="${os.razonSocial}"
+                                    th:data-iva="${os.condicionIva.name()}"
+                                    th:data-domicilio="${os.domicilioFiscal}"
+                                    th:text="|${os.nombre} (CUIT ${os.cuit}) - ${os.razonSocial}|"></option>
+                        </select>
+                        <small class="muted">
+                            ¿Falta una obra social? <a th:href="@{/obras-sociales}" target="_blank" style="color: #00576c; text-decoration: underline;">Administrar Padrón de Obras Sociales</a>
+                        </small>
+                    </div>
+
+                    <!-- Selector de Paciente Asociado (Beneficiario) -->
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="select-cliente-obrasocial" style="color: #1e3a8a; font-weight: 700;">
+                            👤 Seleccionar Paciente / Cliente Atendido (para autocompletar turnos y servicios)
+                        </label>
+                        <select id="select-cliente-obrasocial">
+                            <option value="">-- Seleccionar cliente / paciente para cargar sus servicios --</option>
+                            <option th:each="c : ${clientes}"
+                                    th:value="${c.id}"
+                                    th:data-nombre="${c.nombrePaciente}"
+                                    th:data-dni="${c.dniPaciente}"
+                                    th:data-domicilio="${c.domicilio}"
+                                    th:text="|${c.nombrePaciente} (DNI ${c.dniPaciente})|"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <span class="muted" style="display:block; font-size:0.82rem; margin-bottom:4px;">Obras Sociales frecuentes (clic para cargar):</span>
+                    <span th:each="os : ${obrasSocialesPreset}"
+                          class="preset-badge js-os-preset"
+                          th:text="${os}"
+                          th:data-os="${os}"></span>
+                </div>
+
+                <div class="form-grid">
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="f-obraSocialNombre">Razón Social de la Obra Social / Prepaga</label>
+                        <input type="text" id="f-obraSocialNombre" name="obraSocialNombre"
+                               th:value="${form.obraSocialNombre}" placeholder="Ej.: I.A.P.O.S. o PAMI">
+                    </div>
+                    <div class="field">
+                        <label for="f-obraSocialCuit">CUIT de la Obra Social</label>
+                        <input type="text" id="f-obraSocialCuit" name="obraSocialCuit"
+                               th:value="${form.obraSocialCuit}" placeholder="Ej.: 30-65481234-8">
+                    </div>
+                    <div class="field">
+                        <label for="f-condicionIvaOs">Condición IVA Obra Social</label>
+                        <select id="f-condicionIvaOs">
+                            <option value="IVA_EXENTO">IVA Exento</option>
+                            <option value="IVA_RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top:10px;">
+                    <div class="field" style="grid-column: span 2;">
+                        <label for="f-domicilioOs">Domicilio Fiscal de la Obra Social</label>
+                        <input type="text" id="f-domicilioOs" placeholder="Sede / Delegación">
+                    </div>
+                    <div class="field">
+                        <label for="f-nombrePacienteAsociado">Paciente Atendido (Beneficiario)</label>
+                        <input type="text" id="f-nombrePacienteAsociado" name="nombrePacienteAsociado"
+                               th:value="${form.nombrePacienteAsociado}" placeholder="Nombre del paciente">
+                    </div>
+                    <div class="field">
+                        <label for="f-numeroAfiliado">Número de Afiliado / Carnet</label>
+                        <input type="text" id="f-numeroAfiliado" name="numeroAfiliado"
+                               th:value="${form.numeroAfiliado}" placeholder="Ej.: 02-39485728-01">
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Detalle de Conceptos / Servicios -->
+        <fieldset class="fiscal-box">
+            <legend><strong style="color:#00576c;">3. Detalle de Servicios a Facturar</strong></legend>
+
+            <div style="margin-bottom:10px;">
+                <span class="muted" style="font-size:0.82rem;">Agregar concepto rápido del catálogo:</span>
+                <span th:each="ts : ${tiposServicio}"
+                      class="preset-badge js-servicio-preset"
+                      th:text="${ts.nombre}"
+                      th:data-nombre="${ts.nombre}"></span>
+            </div>
+
+            <div class="table-wrap">
+                <table class="lines-table" id="tabla-lineas">
+                    <thead>
+                    <tr>
+                        <th style="width:45%;">Descripción del Servicio / Concepto</th>
+                        <th style="width:15%;">Cantidad (Hs / Unid)</th>
+                        <th style="width:12%;">U. Medida</th>
+                        <th style="width:15%;">Precio Unitario ($)</th>
+                        <th style="width:13%;">Subtotal ($)</th>
+                        <th style="width:5%;"></th>
+                    </tr>
+                    </thead>
+                    <tbody id="tbody-lineas">
+                    <tr th:each="linea, stat : ${form.lineas}">
+                        <td>
+                            <input type="text" name="lineaDescripcion" th:value="${linea.descripcion}" placeholder="Detalle del servicio..." required>
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" min="0.01" name="lineaCantidad" th:value="${linea.cantidad}" class="calc-cant" required>
+                        </td>
+                        <td>
+                            <input type="text" name="lineaUnidadMedida" th:value="${linea.unidadMedida}" placeholder="horas">
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" min="0" name="lineaPrecioUnitario" th:value="${linea.precioUnitario}" class="calc-precio" required>
+                        </td>
+                        <td style="text-align:right; font-weight:700;">
+                            <span class="calc-subtotal" th:text="|$ ${#numbers.formatDecimal(linea.subtotal, 1, 2)}|">$ 0,00</span>
+                        </td>
+                        <td style="text-align:center;">
+                            <button type="button" class="button button-danger button-sm btn-del-linea" title="Quitar">×</button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:10px;">
+                <button type="button" class="button button-quiet button-sm" id="btn-agregar-linea">
+                    ＋ Agregar otra línea de servicio
+                </button>
+            </div>
+
+            <!-- Resumen de Totales -->
+            <div class="totales-box">
+                <div class="totales-row">
+                    <span>Subtotal:</span>
+                    <strong id="lbl-subtotal">$ 0,00</strong>
+                </div>
+                <div class="totales-row">
+                    <span>Alícuota IVA:</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <select name="porcentajeIva" id="f-porcentajeIva" style="padding:3px 6px;">
+                            <option value="0.00" th:selected="${form.porcentajeIva == 0}">0.00% (Exento / Factura C)</option>
+                            <option value="10.50" th:selected="${form.porcentajeIva == 10.5}">10.50%</option>
+                            <option value="21.00" th:selected="${form.porcentajeIva == 21}">21.00%</option>
+                        </select>
+                        <strong id="lbl-iva">$ 0,00</strong>
+                    </div>
+                </div>
+                <div class="totales-row">
+                    <span>Otros Tributos / Impuestos:</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <input type="number" step="0.01" min="0" name="importeOtrosTributos" id="f-importeOtrosTributos"
+                               th:value="${form.importeOtrosTributos}" style="width:110px; text-align:right; padding:3px 6px;">
+                        <strong id="lbl-tributos">$ 0,00</strong>
+                    </div>
+                </div>
+                <div class="totales-row grand-total">
+                    <span>Total Facturado:</span>
+                    <strong id="lbl-total">$ 0,00</strong>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="field" style="margin-top:14px;">
+            <label for="f-observaciones">Observaciones adicionales en la factura (opcional)</label>
+            <textarea id="f-observaciones" name="observaciones" rows="2"
+                      placeholder="Indicaciones para la obra social o paciente, número de expediente, etc."
+                      th:text="${form.observaciones}"></textarea>
+        </div>
+
+        <div class="form-actions" style="margin-top:20px;">
+            <button type="submit" class="button button-primary" style="font-size:1.05rem; padding:12px 24px;">
+                ✓ Emitir Factura Electrónica ARCA
+            </button>
+            <a class="button button-quiet" th:href="@{/facturas}">Cancelar</a>
+        </div>
+    </form>
+</main>
+
+<script>
+(() => {
+    const tabPaciente = document.getElementById("btn-tab-paciente");
+    const tabObraSocial = document.getElementById("btn-tab-obrasocial");
+    const panelPaciente = document.getElementById("panel-paciente");
+    const panelObraSocial = document.getElementById("panel-obrasocial");
+    const inptipoReceptor = document.getElementById("f-tipoReceptor");
+
+    const selClientePrecarga = document.getElementById("select-cliente-precarga");
+    const inpDenominacion = document.getElementById("f-denominacionReceptor");
+    const inpDocumento = document.getElementById("f-documentoReceptor");
+    const inpDomicilio = document.getElementById("f-domicilioReceptor");
+    const inpEmail = document.getElementById("f-emailReceptor");
+    const inpClienteId = document.getElementById("f-clienteId");
+
+    const inpOsNombre = document.getElementById("f-obraSocialNombre");
+    const inpOsCuit = document.getElementById("f-obraSocialCuit");
+    const inpOsDomicilio = document.getElementById("f-domicilioOs");
+    const selCondIvaOs = document.getElementById("f-condicionIvaOs");
+    const selCondIva = document.getElementById("f-condicionIvaReceptor");
+    const inpPacienteAsociado = document.getElementById("f-nombrePacienteAsociado");
+
+    const selOsPadron = document.getElementById("select-obrasocial-padron");
+    const selClienteOs = document.getElementById("select-cliente-obrasocial");
+    const inpPeriodoDesde = document.getElementById("f-periodoDesde");
+    const inpPeriodoHasta = document.getElementById("f-periodoHasta");
+    const btnForzarCargaTurnos = document.getElementById("btn-forzar-carga-turnos");
+    const txtSincronizarTurnos = document.getElementById("txt-sincronizar-turnos");
+
+    const tbody = document.getElementById("tbody-lineas");
+    const btnAddLinea = document.getElementById("btn-agregar-linea");
+
+    const selIva = document.getElementById("f-porcentajeIva");
+    const inpTributos = document.getElementById("f-importeOtrosTributos");
+    const lblSubtotal = document.getElementById("lbl-subtotal");
+    const lblIva = document.getElementById("lbl-iva");
+    const lblTributos = document.getElementById("lbl-tributos");
+    const lblTotal = document.getElementById("lbl-total");
+
+    function setModoReceptor(modo) {
+        if (modo === "OBRA_SOCIAL") {
+            inptipoReceptor.value = "OBRA_SOCIAL";
+            tabObraSocial.classList.add("is-active");
+            tabPaciente.classList.remove("is-active");
+            panelObraSocial.hidden = false;
+            panelPaciente.hidden = true;
+            inpDenominacion.removeAttribute("required");
+            inpOsNombre.setAttribute("required", "required");
+            inpOsCuit.setAttribute("required", "required");
+            if (!inpPacienteAsociado.value && inpDenominacion.value) {
+                inpPacienteAsociado.value = inpDenominacion.value;
+            }
+        } else {
+            inptipoReceptor.value = "PACIENTE";
+            tabPaciente.classList.add("is-active");
+            tabObraSocial.classList.remove("is-active");
+            panelPaciente.hidden = false;
+            panelObraSocial.hidden = true;
+            inpDenominacion.setAttribute("required", "required");
+            inpOsNombre.removeAttribute("required");
+            inpOsCuit.removeAttribute("required");
+        }
+    }
+
+    tabPaciente.addEventListener("click", () => setModoReceptor("PACIENTE"));
+    tabObraSocial.addEventListener("click", () => setModoReceptor("OBRA_SOCIAL"));
+
+    if (inptipoReceptor.value === "OBRA_SOCIAL") {
+        setModoReceptor("OBRA_SOCIAL");
+    }
+
+    // Presets de Obras Sociales
+    document.querySelectorAll(".js-os-preset").forEach(badge => {
+        badge.addEventListener("click", () => {
+            inpOsNombre.value = badge.dataset.os;
+            if (badge.dataset.os.includes("PAMI")) {
+                inpOsCuit.value = "30-52625211-9";
+            } else if (badge.dataset.os.includes("I.A.P.O.S.")) {
+                inpOsCuit.value = "30-65481234-8";
+            } else if (badge.dataset.os.includes("OSDE")) {
+                inpOsCuit.value = "30-54674125-3";
+            } else if (badge.dataset.os.includes("OSECAC")) {
+                inpOsCuit.value = "30-54877408-6";
+            }
+        });
+    });
+
+    // Autocompletar desde cliente
+    if (selClientePrecarga) {
+        selClientePrecarga.addEventListener("change", () => {
+            const opt = selClientePrecarga.options[selClientePrecarga.selectedIndex];
+            if (!opt || !opt.value) return;
+            inpClienteId.value = opt.value;
+            inpDenominacion.value = opt.dataset.nombre || "";
+            inpDocumento.value = opt.dataset.dni || "";
+            inpDomicilio.value = opt.dataset.domicilio || "";
+            inpEmail.value = opt.dataset.correo || "";
+            inpPacienteAsociado.value = opt.dataset.nombre || "";
+            sincronizarTurnosPeriodo(opt.value);
+        });
+    }
+
+    // Autocompletar desde Padrón de Obras Sociales
+    if (selOsPadron) {
+        selOsPadron.addEventListener("change", () => {
+            const opt = selOsPadron.options[selOsPadron.selectedIndex];
+            if (!opt || !opt.value) return;
+            inpOsNombre.value = opt.dataset.nombre || "";
+            inpOsCuit.value = opt.dataset.cuit || "";
+            if (inpOsDomicilio) inpOsDomicilio.value = opt.dataset.domicilio || "";
+            if (selCondIvaOs && opt.dataset.iva) {
+                selCondIvaOs.value = opt.dataset.iva;
+            }
+        });
+    }
+
+    // Seleccionar cliente en modo Obra Social
+    if (selClienteOs) {
+        selClienteOs.addEventListener("change", () => {
+            const opt = selClienteOs.options[selClienteOs.selectedIndex];
+            if (!opt || !opt.value) return;
+            inpClienteId.value = opt.value;
+            inpPacienteAsociado.value = opt.dataset.nombre || "";
+            sincronizarTurnosPeriodo(opt.value);
+        });
+    }
+
+    // Sincronizar automáticamente turnos cuando cambian las fechas de período
+    if (inpPeriodoDesde) {
+        inpPeriodoDesde.addEventListener("change", () => {
+            if (inpClienteId.value) sincronizarTurnosPeriodo(inpClienteId.value);
+        });
+    }
+    if (inpPeriodoHasta) {
+        inpPeriodoHasta.addEventListener("change", () => {
+            if (inpClienteId.value) sincronizarTurnosPeriodo(inpClienteId.value);
+        });
+    }
+
+    if (btnForzarCargaTurnos) {
+        btnForzarCargaTurnos.addEventListener("click", () => {
+            if (!inpClienteId.value) {
+                alert("Por favor seleccioná primero un cliente o paciente para poder cargar sus turnos registrados.");
+                return;
+            }
+            sincronizarTurnosPeriodo(inpClienteId.value);
+        });
+    }
+
+    async function sincronizarTurnosPeriodo(clienteId) {
+        const desde = inpPeriodoDesde ? inpPeriodoDesde.value : "";
+        const hasta = inpPeriodoHasta ? inpPeriodoHasta.value : "";
+
+        if (!clienteId || !desde || !hasta) {
+            return;
+        }
+
+        if (txtSincronizarTurnos) {
+            txtSincronizarTurnos.textContent = "Consultando turnos del cliente en el período...";
+            txtSincronizarTurnos.style.color = "#0369a1";
+        }
+
+        try {
+            const resp = await fetch(`/facturas/resumen-turnos?clienteId=${clienteId}&desde=${desde}&hasta=${hasta}`);
+            if (!resp.ok) {
+                const err = await resp.json();
+                if (txtSincronizarTurnos) {
+                    txtSincronizarTurnos.textContent = err.error || "No se pudieron obtener turnos para las fechas indicadas.";
+                    txtSincronizarTurnos.style.color = "#b91c1c";
+                }
+                return;
+            }
+
+            const data = await resp.json();
+            if (data.lineasSugeridas && data.lineasSugeridas.length > 0) {
+                // Reemplazar líneas actuales con los turnos y adicionales calculados
+                tbody.innerHTML = "";
+                data.lineasSugeridas.forEach(lin => {
+                    agregarFila(lin.descripcion, lin.cantidad, lin.unidadMedida || "horas", lin.precioUnitario);
+                });
+                if (txtSincronizarTurnos) {
+                    txtSincronizarTurnos.textContent = `Se cargaron ${data.cantidadTurnos} turno(s) (${data.totalHoras} hs) por $ ${data.totalGeneral.toLocaleString("es-AR", { minimumFractionDigits: 2 })}.`;
+                    txtSincronizarTurnos.style.color = "#15803d";
+                }
+            } else {
+                if (txtSincronizarTurnos) {
+                    txtSincronizarTurnos.textContent = `No se registraron turnos para este cliente entre el ${desde} y el ${hasta}.`;
+                    txtSincronizarTurnos.style.color = "#d97706";
+                }
+            }
+        } catch (e) {
+            console.error("Error al sincronizar turnos:", e);
+            if (txtSincronizarTurnos) {
+                txtSincronizarTurnos.textContent = "Error al conectar con el servidor para consultar turnos.";
+                txtSincronizarTurnos.style.color = "#b91c1c";
+            }
+        }
+    }
+
+    // Presets de servicios
+    document.querySelectorAll(".js-servicio-preset").forEach(badge => {
+        badge.addEventListener("click", () => {
+            agregarFila(badge.dataset.nombre, 8, "horas", 4500);
+        });
+    });
+
+    function fmt(val) {
+        return "$ " + Number(val || 0).toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function recalcular() {
+        let subtotal = 0;
+        tbody.querySelectorAll("tr").forEach(tr => {
+            const c = Number(tr.querySelector(".calc-cant").value || 0);
+            const p = Number(tr.querySelector(".calc-precio").value || 0);
+            const sub = Math.round((c * p + Number.EPSILON) * 100) / 100;
+            tr.querySelector(".calc-subtotal").textContent = fmt(sub);
+            subtotal += sub;
+        });
+        subtotal = Math.round((subtotal + Number.EPSILON) * 100) / 100;
+
+        const pctIva = Number(selIva.value || 0);
+        const iva = Math.round((subtotal * pctIva / 100 + Number.EPSILON) * 100) / 100;
+        const trib = Number(inpTributos.value || 0);
+        const total = Math.round((subtotal + iva + trib + Number.EPSILON) * 100) / 100;
+
+        lblSubtotal.textContent = fmt(subtotal);
+        lblIva.textContent = fmt(iva);
+        lblTributos.textContent = fmt(trib);
+        lblTotal.textContent = fmt(total);
+    }
+
+    function hookFila(tr) {
+        tr.querySelector(".calc-cant").addEventListener("input", recalcular);
+        tr.querySelector(".calc-precio").addEventListener("input", recalcular);
+        tr.querySelector(".btn-del-linea").addEventListener("click", () => {
+            if (tbody.querySelectorAll("tr").length > 1) {
+                tr.remove();
+                recalcular();
+            } else {
+                alert("Debés conservar al menos una línea de concepto en la factura.");
+            }
+        });
+    }
+
+    tbody.querySelectorAll("tr").forEach(hookFila);
+
+    function agregarFila(desc = "", cant = 1, um = "horas", precio = 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><input type="text" name="lineaDescripcion" value="${desc}" placeholder="Detalle del servicio..." required></td>
+            <td><input type="number" step="0.01" min="0.01" name="lineaCantidad" value="${cant}" class="calc-cant" required></td>
+            <td><input type="text" name="lineaUnidadMedida" value="${um}" placeholder="horas"></td>
+            <td><input type="number" step="0.01" min="0" name="lineaPrecioUnitario" value="${precio}" class="calc-precio" required></td>
+            <td style="text-align:right; font-weight:700;"><span class="calc-subtotal">$ 0,00</span></td>
+            <td style="text-align:center;"><button type="button" class="button button-danger button-sm btn-del-linea" title="Quitar">×</button></td>
+        `;
+        tbody.appendChild(tr);
+        hookFila(tr);
+        recalcular();
+    }
+
+    btnAddLinea.addEventListener("click", () => {
+        agregarFila("", 1, "horas", 0);
+    });
+
+    selIva.addEventListener("change", recalcular);
+    inpTributos.addEventListener("input", recalcular);
+
+    recalcular();
+})();
+</script>
+</body>
+</html>

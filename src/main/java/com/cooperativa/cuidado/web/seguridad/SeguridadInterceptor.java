@@ -123,6 +123,11 @@ public class SeguridadInterceptor implements HandlerInterceptor {
         if (path.startsWith("/estadisticas")) {
             return Permiso.VER_ESTADISTICAS;
         }
+        if (path.startsWith("/facturas")
+                || path.startsWith("/api/facturas")
+                || path.startsWith("/obras-sociales")) {
+            return Permiso.GESTIONAR_FACTURACION;
+        }
         if (path.startsWith("/liquidaciones-familia")) {
             return Permiso.REALIZAR_LIQUIDACIONES_FAMILIA;
         }

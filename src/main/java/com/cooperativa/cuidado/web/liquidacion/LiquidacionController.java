@@ -183,6 +183,7 @@ public class LiquidacionController {
         model.addAttribute("inicioMesActual", mesRef.atDay(1));
         model.addAttribute("finMesActual", mesRef.atEndOfMonth());
         long proximo = reciboService.obtenerProximoNumero();
+        model.addAttribute("proximoNumero", proximo);
         model.addAttribute("proximoNumeroFormateado", String.format("N° %05d", proximo));
         model.addAttribute("recibosEmitidos", reciboService.listarEmitidos());
         model.addAttribute("correoConfigurado", correoService.estaConfigurado());

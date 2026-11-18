@@ -124,11 +124,16 @@
                 </select>
                 <label class="visually-hidden" for="calendar-date">Ir a una fecha</label>
                 <input id="calendar-date" type="date" th:value="${fechaActual}" aria-label="Ir a una fecha">
+                <div class="calendar-mode-toggle" role="group" aria-label="Modo de visualización" style="display:inline-flex; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
+                    <button type="button" class="button button-quiet button-sm is-active" id="btn-mode-calendar" style="border-radius:0; border:none; padding:6px 12px; font-weight:700;">📅 Grilla</button>
+                    <button type="button" class="button button-quiet button-sm" id="btn-mode-list" style="border-radius:0; border:none; padding:6px 12px; font-weight:700;">📋 Lista de turnos</button>
+                </div>
                 <label class="visually-hidden" for="calendar-view">Vista del calendario</label>
                 <select id="calendar-view" aria-label="Vista del calendario">
                     <option value="week" selected>Semana</option>
                     <option value="day">Día</option>
                     <option value="month">Mes</option>
+                    <option value="list">📋 Lista de turnos</option>
                 </select>
             </div>
         </div>
@@ -200,6 +205,6 @@
         </div>
     </section>
 </main>
-<script th:src="@{/js/calendario.js(v=7)}" defer></script>
+<script th:src="@{/js/calendario.js(v=8)}" defer></script>
 </body>
 </html>

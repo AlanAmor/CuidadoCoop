@@ -146,7 +146,15 @@ public class ReciboRetribucionService {
         CalculoCuidados cuidados = calcularCuidados(socio.getId(), periodoDesde, periodoHasta);
 
         synchronized (secuenciaLock) {
-            long siguienteNumero = obtenerProximoNumero();
+            long siguienteNumero;
+            if (form.getNumeroReciboManual() != null && form.getNumeroReciboManual() > 0) {
+                if (reciboRepository.existsByNumeroRecibo(form.getNumeroReciboManual())) {
+                    throw new DatosInvalidosException("El número de recibo N° " + form.getNumeroReciboManual() + " ya fue emitido previamente.");
+                }
+                siguienteNumero = form.getNumeroReciboManual();
+            } else {
+                siguienteNumero = obtenerProximoNumero();
+            }
 
             ReciboRetribucion recibo = new ReciboRetribucion();
             recibo.setNumeroRecibo(siguienteNumero);

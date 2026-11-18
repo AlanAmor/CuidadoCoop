@@ -23,6 +23,9 @@
     let transitionDir = 0;
     let loadingTimer = null;
 
+    const btnModeCalendar = document.getElementById("btn-mode-calendar");
+    const btnModeList = document.getElementById("btn-mode-list");
+
     document.getElementById("calendar-prev").addEventListener("click", () => movePeriod(-1));
     document.getElementById("calendar-next").addEventListener("click", () => movePeriod(1));
     document.getElementById("calendar-today").addEventListener("click", () => {
@@ -32,8 +35,38 @@
     });
     viewSelect.addEventListener("change", () => {
         transitionDir = 0;
+        syncToggleButtons();
         render();
     });
+    if (btnModeCalendar && btnModeList) {
+        btnModeCalendar.addEventListener("click", () => {
+            if (viewSelect.value === "list") {
+                viewSelect.value = "week";
+            }
+            syncToggleButtons();
+            transitionDir = 0;
+            render();
+        });
+        btnModeList.addEventListener("click", () => {
+            viewSelect.value = "list";
+            syncToggleButtons();
+            transitionDir = 0;
+            render();
+        });
+    }
+
+    function syncToggleButtons() {
+        if (!btnModeCalendar || !btnModeList) return;
+        const esLista = viewSelect.value === "list";
+        btnModeList.classList.toggle("is-active", esLista);
+        btnModeCalendar.classList.toggle("is-active", !esLista);
+        btnModeList.style.background = esLista ? "#00576c" : "transparent";
+        btnModeList.style.color = esLista ? "#ffffff" : "inherit";
+        btnModeCalendar.style.background = !esLista ? "#00576c" : "transparent";
+        btnModeCalendar.style.color = !esLista ? "#ffffff" : "inherit";
+    }
+
+    syncToggleButtons();
     dateInput.addEventListener("change", () => {
         if (dateInput.value) {
             transitionDir = 0;
@@ -54,7 +87,7 @@
     function movePeriod(direction) {
         transitionDir = direction;
         const view = viewSelect.value;
-        if (view === "month") {
+        if (view === "month" || view === "list") {
             anchor = new Date(anchor.getFullYear(), anchor.getMonth() + direction, 1);
         } else {
             anchor.setDate(anchor.getDate() + direction * (view === "week" ? 7 : 1));
@@ -168,9 +201,185 @@
         grid.replaceChildren();
         if (view === "month") {
             renderMonth(range, events);
+        } else if (view === "list") {
+            renderListView(range, events);
         } else {
             renderTimeline(range, view, events);
         }
+    }
+
+    function renderListView(range, events) {
+        const container = createElement("div", `calendar-list-view ${animClassForDirection()}`);
+        container.style.padding = "16px";
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.gap = "14px";
+
+        if (!events || events.length === 0) {
+            const emptyBox = createElement("div", "calendar-list-empty");
+            emptyBox.style.padding = "40px 20px";
+            emptyBox.style.textAlign = "center";
+            emptyBox.style.background = "#f8fafc";
+            emptyBox.style.border = "1px dashed #cbd5e1";
+            emptyBox.style.borderRadius = "10px";
+
+            const p1 = createElement("strong", "", "No hay turnos registrados en este período.");
+            p1.style.display = "block";
+            p1.style.fontSize = "1.05rem";
+            p1.style.color = "#334155";
+            p1.style.marginBottom = "6px";
+
+            const p2 = createElement("p", "muted", "Navegá con las flechas o seleccioná otra fecha para consultar los turnos asignados.");
+            p2.style.margin = "0";
+
+            emptyBox.append(p1, p2);
+            container.appendChild(emptyBox);
+            grid.appendChild(container);
+            return;
+        }
+
+        // Ordenar por fecha y hora de inicio ascendente
+        const sorted = [...events].sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+
+        // Barra resumen superior del listado
+        const summaryBar = createElement("div", "calendar-list-summary");
+        summaryBar.style.display = "flex";
+        summaryBar.style.justifyContent = "space-between";
+        summaryBar.style.alignItems = "center";
+        summaryBar.style.flexWrap = "wrap";
+        summaryBar.style.gap = "10px";
+        summaryBar.style.padding = "10px 14px";
+        summaryBar.style.background = "#f1f5f9";
+        summaryBar.style.borderRadius = "8px";
+        summaryBar.style.border = "1px solid #cbd5e1";
+
+        let totalHoras = 0;
+        sorted.forEach(ev => {
+            const hs = (new Date(ev.fin) - new Date(ev.inicio)) / 3600000;
+            totalHoras += hs;
+        });
+
+        const leftCount = createElement("span", "", `${sorted.length} turno(s) en la lista`);
+        leftCount.style.fontWeight = "700";
+        leftCount.style.color = "#00576c";
+
+        const rightHours = createElement("span", "", `Total: ${totalHoras.toLocaleString("es-AR", {minimumFractionDigits: 1, maximumFractionDigits: 2})} horas asignadas`);
+        rightHours.style.fontWeight = "700";
+        rightHours.style.color = "#334155";
+
+        summaryBar.append(leftCount, rightHours);
+        container.appendChild(summaryBar);
+
+        // Tabla de turnos
+        const tableWrap = createElement("div", "table-wrap");
+        const table = createElement("table", "calendar-list-table");
+        table.style.width = "100%";
+        table.style.borderCollapse = "collapse";
+        table.style.fontSize = "0.88rem";
+
+        const thead = createElement("thead");
+        thead.innerHTML = `
+            <tr>
+                <th style="background:#00576c; color:#fff; padding:8px 10px; text-align:left;">Fecha y Horario</th>
+                <th style="background:#00576c; color:#fff; padding:8px 10px; text-align:left;">Socio / Cuidador</th>
+                <th style="background:#00576c; color:#fff; padding:8px 10px; text-align:left;">Paciente y Domicilio</th>
+                <th style="background:#00576c; color:#fff; padding:8px 10px; text-align:left;">Servicio</th>
+                <th style="background:#00576c; color:#fff; padding:8px 10px; text-align:left;">Marcación</th>
+                <th style="background:#00576c; color:#fff; padding:8px 10px; text-align:center;">Acción</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        const tbody = createElement("tbody");
+        sorted.forEach((event, idx) => {
+            const tr = createElement("tr");
+            tr.style.background = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
+            tr.style.borderBottom = "1px solid #e2e8f0";
+
+            const ini = new Date(event.inicio);
+            const fin = new Date(event.fin);
+            const hs = ((fin - ini) / 3600000).toFixed(1);
+
+            // Col 1: Fecha y Horario
+            const tdFecha = createElement("td");
+            tdFecha.style.padding = "8px 10px";
+            const dStr = new Intl.DateTimeFormat("es-AR", {weekday: "short", day: "2-digit", month: "short"}).format(ini);
+            const strongFecha = createElement("strong", "", dStr.charAt(0).toUpperCase() + dStr.slice(1));
+            strongFecha.style.display = "block";
+            strongFecha.style.color = "#0f172a";
+            const spanHorario = createElement("span", "muted", `${time(ini)} a ${time(fin)} (${hs} hs)`);
+            tdFecha.append(strongFecha, spanHorario);
+            if (event.feriadoNacional) {
+                const ferBadge = createElement("span", "event-attendance-pill is-holiday", "★ Feriado");
+                ferBadge.style.display = "inline-block";
+                ferBadge.style.marginTop = "3px";
+                tdFecha.appendChild(ferBadge);
+            }
+
+            // Col 2: Socio / Cuidador
+            const tdSocio = createElement("td");
+            tdSocio.style.padding = "8px 10px";
+            const strongSocio = createElement("strong", "", event.nombreSocio);
+            strongSocio.style.display = "block";
+            const spanDni = createElement("span", "muted", `DNI ${event.dniSocio}`);
+            tdSocio.append(strongSocio, spanDni);
+
+            // Col 3: Paciente y Domicilio
+            const tdPaciente = createElement("td");
+            tdPaciente.style.padding = "8px 10px";
+            const strongPac = createElement("strong", "", event.paciente);
+            strongPac.style.display = "block";
+            const spanDom = createElement("span", "muted", event.domicilio);
+            tdPaciente.append(strongPac, spanDom);
+
+            // Col 4: Servicio
+            const tdServ = createElement("td");
+            tdServ.style.padding = "8px 10px";
+            const spanServ = createElement("span", "availability-tag-servicio", event.tipoServicio || "Cuidado");
+            spanServ.style.display = "inline-block";
+            tdServ.appendChild(spanServ);
+
+            // Col 5: Marcación
+            const tdMarc = createElement("td");
+            tdMarc.style.padding = "8px 10px";
+            if (event.marcacionEntrada && event.marcacionSalida) {
+                const p = createElement("span", "event-attendance-pill is-complete", `✓ E/S: ${dateTimeCompact(event.marcacionEntrada)} – ${dateTimeCompact(event.marcacionSalida)}`);
+                tdMarc.appendChild(p);
+            } else if (event.marcacionEntrada) {
+                const p = createElement("span", "event-attendance-pill is-in-progress", `● Entrada: ${dateTimeCompact(event.marcacionEntrada)}`);
+                tdMarc.appendChild(p);
+            } else if (event.marcacionSalida) {
+                const p = createElement("span", "event-attendance-pill is-complete", `✓ Salida: ${dateTimeCompact(event.marcacionSalida)}`);
+                tdMarc.appendChild(p);
+            } else {
+                const p = createElement("span", "muted", "Pendiente");
+                tdMarc.appendChild(p);
+            }
+            if (event.aclaracionTurno) {
+                const noteDiv = createElement("div", "", `💬 ${event.aclaracionTurno}`);
+                noteDiv.style.fontSize = "0.78rem";
+                noteDiv.style.color = "#b45309";
+                noteDiv.style.marginTop = "4px";
+                tdMarc.appendChild(noteDiv);
+            }
+
+            // Col 6: Acción
+            const tdAcc = createElement("td");
+            tdAcc.style.padding = "8px 10px";
+            tdAcc.style.textAlign = "center";
+            const btnDetalle = createElement("button", "button button-quiet button-sm", "Ver detalle");
+            btnDetalle.type = "button";
+            btnDetalle.addEventListener("click", () => showDetail(event));
+            tdAcc.appendChild(btnDetalle);
+
+            tr.append(tdFecha, tdSocio, tdPaciente, tdServ, tdMarc, tdAcc);
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        container.appendChild(tableWrap);
+        grid.appendChild(container);
     }
 
     function renderTimeline(range, view, events) {
@@ -1498,6 +1707,11 @@
             end.setDate(end.getDate() + 6);
             return {start, end};
         }
+        if (view === "list") {
+            const start = new Date(date.getFullYear(), date.getMonth(), 1);
+            const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            return {start, end};
+        }
         const first = new Date(date.getFullYear(), date.getMonth(), 1);
         const start = startOfWeek(first);
         const end = new Date(start);
@@ -1537,6 +1751,10 @@
                 day: "numeric", month: "short", year: "numeric"
             }).format(range.end);
             return `${start} – ${end}`;
+        }
+        if (view === "list") {
+            const m = new Intl.DateTimeFormat("es-AR", {month: "long", year: "numeric"}).format(date);
+            return `Lista de turnos · ${m.charAt(0).toUpperCase() + m.slice(1)}`;
         }
         return new Intl.DateTimeFormat("es-AR", {month: "long", year: "numeric"}).format(date);
     }

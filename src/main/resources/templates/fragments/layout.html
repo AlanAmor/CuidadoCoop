@@ -20,13 +20,15 @@
         </div>
 
         <div class="nav-dropdown"
-             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES_FAMILIA') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}">
+             th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES_FAMILIA') or @seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS') or @seguridad.tienePermiso(usuarioActual, 'GESTIONAR_FACTURACION')}">
             <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">
                 Clientes <span class="nav-dropdown-caret" aria-hidden="true">▾</span>
             </button>
             <div class="nav-dropdown-menu" role="menu">
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'AGREGAR_CLIENTES')}" th:href="@{/clientes}">Clientes</a>
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_LIQUIDACIONES_FAMILIA')}" th:href="@{/liquidaciones-familia}">Liquidación Familia</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_FACTURACION')}" th:href="@{/facturas}">Facturación ARCA</a>
+                <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'GESTIONAR_FACTURACION')}" th:href="@{/obras-sociales}">Padrón Obras Sociales</a>
                 <a role="menuitem" th:if="${@seguridad.tienePermiso(usuarioActual, 'REALIZAR_PRESUPUESTOS')}" th:href="@{/presupuestos}">Presupuestos</a>
             </div>
         </div>

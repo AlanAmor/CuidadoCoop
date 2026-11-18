@@ -10,6 +10,8 @@ public interface ReciboRetribucionRepository extends JpaRepository<ReciboRetribu
     @Query("select coalesce(max(r.numeroRecibo), 0) from ReciboRetribucion r")
     Long obtenerUltimoNumero();
 
+    boolean existsByNumeroRecibo(Long numeroRecibo);
+
     List<ReciboRetribucion> findAllByOrderByNumeroReciboDesc();
 
     void deleteAllBySocioId(Long socioId);
